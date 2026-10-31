@@ -14,7 +14,9 @@ export function downloadBlob(blob: Blob, fileName: string) {
   document.body.appendChild(a)
   a.click()
   a.remove()
-  URL.revokeObjectURL(url)
+  // The download starts asynchronously; revoking the URL right away can make
+  // it fail (seen in Safari/Firefox), so free the memory a bit later.
+  setTimeout(() => URL.revokeObjectURL(url), 30_000)
 }
 
 // Export the diary to .xlsx via the server; the file name is built here
