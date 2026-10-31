@@ -1,7 +1,7 @@
 import { fireEvent, render, screen } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { todayKey } from '../domain/dates'
+import { addDays, todayKey } from '../domain/dates'
 import type { DiaryState, Profile } from '../domain/types'
 import { DiaryProvider } from '../storage/DiaryContext'
 import { emptyState, STORAGE_KEY } from '../storage/storage'
@@ -63,6 +63,19 @@ describe('Weight', () => {
     view()
     fireEvent.change(screen.getByLabelText('Вес, кг'), { target: { value: '85' } })
     fireEvent.click(screen.getByRole('button', { name: 'Сохранить' }))
+    expect(screen.getByText(/Норма пересчитана: .* ккал/)).toBeInTheDocument()
+  })
+
+  it('shows the recalculated norm for a backdated first weight (record on a later day)', () => {
+    // The only norm record starts today; the weight is entered for yesterday.
+    seed({ profile, normHistory: [{ ...autoNorm, effectiveFrom: todayKey() }] })
+    view()
+    const yesterday = addDays(todayKey(), -1)
+    fireEvent.change(screen.getByLabelText('Вес, кг'), { target: { value: '85' } })
+    fireEvent.change(screen.getByLabelText('Дата'), { target: { value: yesterday } })
+    fireEvent.click(screen.getByRole('button', { name: 'Сохранить' }))
+    expect(stored().normHistory).toHaveLength(1)
+    expect(stored().normHistory[0].kcal).not.toBe(1000)
     expect(screen.getByText(/Норма пересчитана: .* ккал/)).toBeInTheDocument()
   })
 

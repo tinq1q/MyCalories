@@ -17,28 +17,29 @@ export default function Weight() {
   const toast = useToast()
   const [text, setText] = useState('')
   const [date, setDate] = useState(todayKey)
-  // The norm record for the saved date as it was before saving; used to detect a recalculation.
-  const [saved, setSaved] = useState<{ date: string; before: string } | null>(null)
+  // The norm history as it was before saving; used to detect a recalculation.
+  const [saved, setSaved] = useState<{ before: string } | null>(null)
 
   if (!state.profile?.trackWeight) return <Navigate to="/" replace />
 
   const weight = parseWeight(text)
   const canSave = weight !== null && isValidDayKey(date) && date <= todayKey()
-  const recordOn = (d: string) => state.normHistory.find((r) => r.effectiveFrom === d)
 
   const save = () => {
     if (weight === null || !canSave) return
-    setSaved({ date, before: JSON.stringify(recordOn(date) ?? null) })
+    setSaved({ before: JSON.stringify(state.normHistory) })
     addWeight({ date, weightKg: weight })
     setText('')
     toast.show('Вес сохранён')
   }
 
-  // Shown when saving produced a new or changed non-manual norm record for that day.
-  const after = saved && recordOn(saved.date)
+  // Shown when saving changed the norm history. The reducer only touches the
+  // latest (non-manual) record, which may sit on a later day than the weight,
+  // so the message shows the norm in force today.
+  const last = state.normHistory.at(-1)
   const recalculated =
-    saved && after && !after.manual && JSON.stringify(after) !== saved.before
-      ? normForDate(state.normHistory, saved.date)
+    saved && last && !last.manual && JSON.stringify(state.normHistory) !== saved.before
+      ? normForDate(state.normHistory, todayKey())
       : null
 
   const points = state.weights.map((w) => ({ label: ruDate(w.date).slice(0, 5), kg: w.weightKg }))

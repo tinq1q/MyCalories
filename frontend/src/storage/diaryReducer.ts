@@ -76,9 +76,14 @@ export function diaryReducer(state: DiaryState, action: DiaryAction): DiaryState
       if (!state.profile || !latest) return { ...state, weights }
       // Stamp updatedAt so merge sees this as a profile change.
       const profile = { ...state.profile, weightKg: w.weightKg, updatedAt: action.now }
-      const normHistory = lastIsManual(state.normHistory)
-        ? state.normHistory
-        : upsertNorm(state.normHistory, { effectiveFrom: w.date, ...calcNorm(profile), manual: false })
+      if (lastIsManual(state.normHistory)) return { ...state, weights, profile }
+      // A backdated weight (e.g. the first one, entered for yesterday) can be older
+      // than the latest norm record. A record at w.date would then be shadowed by
+      // that later record, and today's norm would ignore the new weight. So the
+      // latest record itself is recalculated in that case.
+      const lastFrom = state.normHistory.at(-1)?.effectiveFrom
+      const effectiveFrom = lastFrom && lastFrom > w.date ? lastFrom : w.date
+      const normHistory = upsertNorm(state.normHistory, { effectiveFrom, ...calcNorm(profile), manual: false })
       return { ...state, weights, profile, normHistory }
     }
     case 'import':
