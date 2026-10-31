@@ -1,6 +1,6 @@
 import { act, renderHook } from '@testing-library/react'
 import type { ReactNode } from 'react'
-import { beforeEach, describe, expect, it } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { calcNorm } from '../domain/norm'
 import { todayKey } from '../domain/dates'
 import type { Product, Profile } from '../domain/types'
@@ -13,7 +13,11 @@ const male: Profile = { sex: 'male', age: 30, heightCm: 180, weightKg: 80, activ
 const prod = (id: string): Product => ({ id, name: id, kcal: 100, protein: 1, fat: 1, carbs: 1, portionG: null, source: 'base' })
 const manual = { kcal: 2500, protein: 100, fat: 80, carbs: 300 }
 
-beforeEach(() => localStorage.clear())
+beforeEach(() => {
+  vi.restoreAllMocks()
+  vi.useRealTimers()
+  localStorage.clear()
+})
 
 describe('DiaryContext', () => {
   it('setProfile adds a calculated norm record and stamps updatedAt', () => {
@@ -91,6 +95,49 @@ describe('DiaryContext', () => {
     expect(result.current.state.entries).toHaveLength(1)
     act(() => result.current.restoreEntry(removed))
     expect(result.current.state.entries).toHaveLength(2)
+  })
+
+  it('setManualNorm and addWeight stamp profile.updatedAt with the injected now', () => {
+    vi.useFakeTimers()
+    vi.setSystemTime(new Date('2030-01-01T00:00:00.000Z'))
+    const { result } = setup()
+    act(() => result.current.setProfile(male))
+    vi.setSystemTime(new Date('2031-01-01T00:00:00.000Z'))
+    act(() => result.current.setManualNorm(manual))
+    expect(result.current.state.profile?.updatedAt).toBe('2031-01-01T00:00:00.000Z')
+    vi.setSystemTime(new Date('2032-01-01T00:00:00.000Z'))
+    act(() => result.current.addWeight({ date: '2099-01-01', weightKg: 85 }))
+    expect(result.current.state.profile?.updatedAt).toBe('2032-01-01T00:00:00.000Z')
+  })
+
+  it('saveFailed turns true when setItem throws and clears after a successful save', () => {
+    const { result } = setup()
+    expect(result.current.saveFailed).toBe(false)
+    const spy = vi.spyOn(Storage.prototype, 'setItem').mockImplementation(() => {
+      throw new Error('quota')
+    })
+    act(() => { result.current.addEntry({ date: '2026-11-01', meal: 'lunch', product: prod('a'), grams: 1 }) })
+    expect(result.current.saveFailed).toBe(true)
+    spy.mockRestore()
+    act(() => { result.current.addEntry({ date: '2026-11-01', meal: 'lunch', product: prod('b'), grams: 1 }) })
+    expect(result.current.saveFailed).toBe(false)
+  })
+
+  it('corrupt-no-backup: STORAGE_KEY untouched until confirmDiscardCorrupt', () => {
+    localStorage.setItem(STORAGE_KEY, '{oops')
+    const orig = Storage.prototype.setItem
+    vi.spyOn(Storage.prototype, 'setItem').mockImplementation(function (this: Storage, k: string, v: string) {
+      if (k === 'sitefood:corrupt-backup') throw new Error('quota')
+      return orig.call(this, k, v)
+    })
+    const { result } = setup()
+    expect(result.current.warning).toBe('corrupt-no-backup')
+    expect(result.current.corruptRaw).toBe('{oops')
+    act(() => { result.current.addEntry({ date: '2026-11-01', meal: 'lunch', product: prod('a'), grams: 1 }) })
+    expect(localStorage.getItem(STORAGE_KEY)).toBe('{oops')
+    act(() => result.current.confirmDiscardCorrupt())
+    expect(result.current.corruptRaw).toBeNull()
+    expect(JSON.parse(localStorage.getItem(STORAGE_KEY)!).entries).toHaveLength(1)
   })
 
   it('recentProducts is capped at 20', () => {

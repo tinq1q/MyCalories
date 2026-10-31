@@ -1,4 +1,4 @@
-import type { DiaryState, ExportData } from './types'
+import type { DiaryState, ExportData, NormRecord } from './types'
 
 function unionById<T extends { id: string }>(current: T[], incoming: T[]): T[] {
   const seen = new Set(current.map((x) => x.id))
@@ -12,9 +12,16 @@ function mergeWeights(current: DiaryState['weights'], incoming: DiaryState['weig
   return [...byDate.values()].sort((a, b) => a.date.localeCompare(b.date))
 }
 
+// Union by effectiveFrom, ascending; on a date clash the fresher side's record wins.
+function mergeNorms(stale: NormRecord[], fresh: NormRecord[]): NormRecord[] {
+  const byDate = new Map(stale.map((r) => [r.effectiveFrom, r]))
+  for (const r of fresh) byDate.set(r.effectiveFrom, r)
+  return [...byDate.values()].sort((a, b) => a.effectiveFrom.localeCompare(b.effectiveFrom))
+}
+
 // Entries and custom products are unioned by id (existing never overwritten),
-// weights by date. Profile and norm history travel together from whichever
-// side has the newer profile, so they never end up inconsistent.
+// weights by date, norm history by effectiveFrom. The profile comes whole
+// from the side with the newer updatedAt.
 export function mergeDiary(current: DiaryState, incoming: ExportData): DiaryState {
   const cur = current.profile
   const inc = incoming.profile
@@ -22,7 +29,9 @@ export function mergeDiary(current: DiaryState, incoming: ExportData): DiaryStat
   return {
     ...current,
     profile: takeIncoming ? inc : cur,
-    normHistory: takeIncoming ? incoming.normHistory : current.normHistory,
+    normHistory: takeIncoming
+      ? mergeNorms(current.normHistory, incoming.normHistory)
+      : mergeNorms(incoming.normHistory, current.normHistory),
     entries: unionById(current.entries, incoming.entries),
     customProducts: unionById(current.customProducts, incoming.customProducts),
     weights: mergeWeights(current.weights, incoming.weights),

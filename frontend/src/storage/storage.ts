@@ -3,7 +3,7 @@ import type { DiaryState } from '../domain/types'
 export const STORAGE_KEY = 'sitefood:v1'
 export const CORRUPT_BACKUP_KEY = 'sitefood:corrupt-backup'
 
-export type LoadWarning = 'corrupt' | 'unavailable' | null
+export type LoadWarning = 'corrupt' | 'corrupt-no-backup' | 'unavailable' | null
 
 export function emptyState(): DiaryState {
   return {
@@ -28,7 +28,8 @@ function looksValid(v: unknown): v is Record<string, unknown> {
   return (['entries', 'customProducts', 'normHistory', 'weights'] as const).every((k) => Array.isArray(v[k]))
 }
 
-export function loadState(): { state: DiaryState; warning: LoadWarning } {
+// `corruptRaw` is set only for 'corrupt-no-backup': the raw data exists nowhere else.
+export function loadState(): { state: DiaryState; warning: LoadWarning; corruptRaw?: string } {
   let raw: string | null
   try {
     raw = localStorage.getItem(STORAGE_KEY)
@@ -48,7 +49,8 @@ export function loadState(): { state: DiaryState; warning: LoadWarning } {
     try {
       localStorage.setItem(CORRUPT_BACKUP_KEY, raw)
     } catch {
-      /* backup is best-effort */
+      // Backup failed: the caller must not overwrite STORAGE_KEY until the user agrees.
+      return { state: emptyState(), warning: 'corrupt-no-backup', corruptRaw: raw }
     }
     return { state: emptyState(), warning: 'corrupt' }
   }

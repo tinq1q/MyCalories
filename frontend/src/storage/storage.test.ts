@@ -34,6 +34,19 @@ describe('storage', () => {
     expect(localStorage.getItem('sitefood:corrupt-backup')).toBe('{"entries": 5}')
   })
 
+  it('reports corrupt-no-backup with raw data when the backup write fails', () => {
+    localStorage.setItem(STORAGE_KEY, '{oops')
+    const orig = Storage.prototype.setItem
+    vi.spyOn(Storage.prototype, 'setItem').mockImplementation(function (this: Storage, k: string, v: string) {
+      if (k === 'sitefood:corrupt-backup') throw new Error('quota')
+      return orig.call(this, k, v)
+    })
+    const r = loadState()
+    expect(r.warning).toBe('corrupt-no-backup')
+    expect(r.corruptRaw).toBe('{oops')
+    expect(r.state).toEqual(emptyState())
+  })
+
   it('reports unavailable when getItem throws', () => {
     vi.spyOn(Storage.prototype, 'getItem').mockImplementation(() => {
       throw new Error('denied')

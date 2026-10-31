@@ -41,7 +41,17 @@ describe('mergeDiary', () => {
     const cur = { ...emptyState(), profile: profile('2026-01-01T00:00:00Z'), normHistory: [{ ...nh[0], kcal: 5 }] }
     const m = mergeDiary(cur, incoming({ profile: profile('2026-06-01T00:00:00Z', 80), normHistory: nh }))
     expect(m.profile?.weightKg).toBe(80)
-    expect(m.normHistory).toEqual(nh)
+    expect(m.normHistory).toEqual(nh) // same effectiveFrom: fresher (incoming) record wins
+  })
+
+  it('unions normHistory by effectiveFrom, keeping the stale side unique records', () => {
+    const rec = (d: string, kcal: number) => ({ effectiveFrom: d, kcal, protein: 1, fat: 1, carbs: 1, manual: false })
+    const cur = { ...emptyState(), profile: profile('2026-01-01T00:00:00Z'), normHistory: [rec('2026-01-01', 1), rec('2026-03-01', 2)] }
+    const m = mergeDiary(cur, incoming({ profile: profile('2026-06-01T00:00:00Z'), normHistory: [rec('2026-03-01', 99), rec('2026-05-01', 3)] }))
+    expect(m.normHistory.map((r) => [r.effectiveFrom, r.kcal])).toEqual([['2026-01-01', 1], ['2026-03-01', 99], ['2026-05-01', 3]])
+    const cur2 = { ...cur, profile: profile('2026-09-01T00:00:00Z') }
+    const m2 = mergeDiary(cur2, incoming({ profile: profile('2026-06-01T00:00:00Z'), normHistory: [rec('2026-03-01', 99), rec('2026-05-01', 3)] }))
+    expect(m2.normHistory.map((r) => [r.effectiveFrom, r.kcal])).toEqual([['2026-01-01', 1], ['2026-03-01', 2], ['2026-05-01', 3]])
   })
 
   it('keeps current profile when it is newer or equal', () => {

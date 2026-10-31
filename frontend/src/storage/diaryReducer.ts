@@ -12,8 +12,8 @@ export type DiaryAction =
   | { type: 'restoreEntry'; entry: Entry }
   | { type: 'addCustomProduct'; product: Product }
   | { type: 'setProfile'; profile: Profile; today: string; now: string }
-  | { type: 'setManualNorm'; norm: Norm | null; today: string }
-  | { type: 'addWeight'; weight: WeightRecord }
+  | { type: 'setManualNorm'; norm: Norm | null; today: string; now: string }
+  | { type: 'addWeight'; weight: WeightRecord; now: string }
   | { type: 'import'; data: ExportData; mode: 'merge' | 'replace' }
   | { type: 'markExported'; now: string }
 
@@ -22,6 +22,11 @@ function upsertNorm(history: NormRecord[], rec: NormRecord): NormRecord[] {
   return [...history.filter((r) => r.effectiveFrom !== rec.effectiveFrom), rec].sort((a, b) =>
     a.effectiveFrom.localeCompare(b.effectiveFrom),
   )
+}
+
+// Any profile/norm change bumps updatedAt so import-merge picks the right side.
+function stamp(profile: Profile | null, now: string): Profile | null {
+  return profile && { ...profile, updatedAt: now }
 }
 
 function lastIsManual(history: NormRecord[]): boolean {
@@ -55,11 +60,11 @@ export function diaryReducer(state: DiaryState, action: DiaryAction): DiaryState
     case 'setManualNorm': {
       if (action.norm) {
         const rec: NormRecord = { effectiveFrom: action.today, ...action.norm, manual: true }
-        return { ...state, normHistory: upsertNorm(state.normHistory, rec) }
+        return { ...state, profile: stamp(state.profile, action.now), normHistory: upsertNorm(state.normHistory, rec) }
       }
       if (!state.profile) return state
       const rec: NormRecord = { effectiveFrom: action.today, ...calcNorm(state.profile), manual: false }
-      return { ...state, normHistory: upsertNorm(state.normHistory, rec) }
+      return { ...state, profile: stamp(state.profile, action.now), normHistory: upsertNorm(state.normHistory, rec) }
     }
     case 'addWeight': {
       const w = action.weight
@@ -67,7 +72,8 @@ export function diaryReducer(state: DiaryState, action: DiaryAction): DiaryState
       const latest = weights[weights.length - 1].date === w.date
       // Only the newest weight drives the profile and the norm.
       if (!state.profile || !latest) return { ...state, weights }
-      const profile = { ...state.profile, weightKg: w.weightKg }
+      // Stamp updatedAt so merge sees this as a profile change.
+      const profile = { ...state.profile, weightKg: w.weightKg, updatedAt: action.now }
       const normHistory = lastIsManual(state.normHistory)
         ? state.normHistory
         : upsertNorm(state.normHistory, { effectiveFrom: w.date, ...calcNorm(profile), manual: false })
