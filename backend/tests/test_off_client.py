@@ -208,3 +208,51 @@ def test_endpoint_503():
     )
     assert res.status_code == 503
     assert res.json() == {"detail": "off_unavailable"}
+
+
+# ---- fix round 1: non-finite / negative numbers, malformed bodies ----
+
+
+@pytest.mark.parametrize("bad", ["nan", "inf", "-inf", float("nan"), float("inf"), -5, "-1"])
+def test_normalize_rejects_non_finite_or_negative_kcal(bad):
+    assert normalize_off_product(with_(nutriments={"energy-kcal_100g": bad})) is None
+
+
+@pytest.mark.parametrize("bad", ["nan", "inf", float("nan"), -3, "-0.5"])
+def test_normalize_bad_macro_becomes_zero(bad):
+    # Chosen policy: a bad macro is treated as missing (0.0); the product stays.
+    nutriments = {
+        "energy-kcal_100g": 100,
+        "proteins_100g": bad,
+        "fat_100g": bad,
+        "carbohydrates_100g": bad,
+    }
+    p = normalize_off_product(with_(nutriments=nutriments))
+    assert p is not None
+    assert (p.protein, p.fat, p.carbs) == (0.0, 0.0, 0.0)
+
+
+@pytest.mark.parametrize("body", [{"products": None}, {"products": "x"}, {"products": {}}, [1, 2]])
+@pytest.mark.anyio
+async def test_malformed_body_raises_unavailable(body):
+    client = make_client(lambda request: httpx.Response(200, json=body))
+    with pytest.raises(OffUnavailable):
+        await client.search("греч")
+
+
+@pytest.mark.anyio
+async def test_invalid_json_raises_unavailable():
+    client = make_client(lambda request: httpx.Response(200, content=b"<html>oops"))
+    with pytest.raises(OffUnavailable):
+        await client.search("греч")
+
+
+def test_endpoint_503_on_malformed_body():
+    http = httpx.AsyncClient(
+        transport=httpx.MockTransport(lambda r: httpx.Response(200, json={"products": None}))
+    )
+    app = create_app()
+    app.dependency_overrides[get_off_client] = lambda: OffClient(http)
+    res = TestClient(app).get("/api/products/off-search", params={"q": "греч"})
+    assert res.status_code == 503
+    assert res.json() == {"detail": "off_unavailable"}

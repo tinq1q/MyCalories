@@ -1,3 +1,4 @@
+import math
 import os
 import time
 
@@ -21,9 +22,17 @@ def _to_float(value) -> float | None:
     if isinstance(value, bool):
         return None
     try:
-        return float(value)
+        number = float(value)
     except (TypeError, ValueError):
         return None
+    # float() happily accepts "nan" and "inf"; JSON cannot represent them.
+    return number if math.isfinite(number) else None
+
+
+def _macro(value) -> float:
+    """A nutrient amount: missing, non-finite or negative values count as 0."""
+    number = _to_float(value)
+    return number if number is not None and number >= 0 else 0.0
 
 
 def normalize_off_product(raw: dict) -> Product | None:
@@ -36,7 +45,7 @@ def normalize_off_product(raw: dict) -> Product | None:
     name = str(raw.get("product_name_ru") or raw.get("product_name") or "").strip()
     nutriments = raw.get("nutriments") or {}
     kcal = _to_float(nutriments.get("energy-kcal_100g"))
-    if not code or not name or kcal is None:
+    if not code or not name or kcal is None or kcal < 0:
         return None
 
     serving = _to_float(raw.get("serving_quantity"))
@@ -44,9 +53,9 @@ def normalize_off_product(raw: dict) -> Product | None:
         id=f"off-{code}",
         name=name,
         kcal=kcal,
-        protein=_to_float(nutriments.get("proteins_100g")) or 0.0,
-        fat=_to_float(nutriments.get("fat_100g")) or 0.0,
-        carbs=_to_float(nutriments.get("carbohydrates_100g")) or 0.0,
+        protein=_macro(nutriments.get("proteins_100g")),
+        fat=_macro(nutriments.get("fat_100g")),
+        carbs=_macro(nutriments.get("carbohydrates_100g")),
         portionG=serving if serving is not None and serving > 0 else None,
         source="off",
     )
@@ -103,9 +112,12 @@ class OffClient:
             raise OffUnavailable()
         try:
             response.raise_for_status()
-            items = response.json().get("products", [])
-        except (httpx.HTTPError, ValueError, AttributeError) as exc:
+            body = response.json()
+        except (httpx.HTTPError, ValueError) as exc:  # bad status or invalid JSON
             raise OffUnavailable() from exc
+        items = body.get("products") if isinstance(body, dict) else None
+        if not isinstance(items, list):
+            raise OffUnavailable()
 
         products = (normalize_off_product(item) for item in items if isinstance(item, dict))
         return [p for p in products if p is not None][:PAGE_SIZE]
