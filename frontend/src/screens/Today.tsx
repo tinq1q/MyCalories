@@ -10,7 +10,6 @@ import BackupReminder from '../ui/BackupReminder'
 import Glass from '../ui/Glass'
 import MacroBars from '../ui/MacroBars'
 import Ring from '../ui/Ring'
-import StorageBanner from '../ui/StorageBanner'
 import { fmt } from '../ui/format'
 import { useToast } from '../ui/Toast'
 import EntrySheet from './EntrySheet'
@@ -84,7 +83,6 @@ export default function Today() {
         if (Math.abs(dx) > 70 && Math.abs(dx) > Math.abs(dy) * 1.5) go(dx < 0 ? 1 : -1)
       }}
     >
-      <StorageBanner />
       <BackupReminder />
 
       <header className="day-header">

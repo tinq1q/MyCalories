@@ -8,6 +8,7 @@ import Weight from './screens/Weight'
 import Profile from './screens/Profile'
 import Today from './screens/Today'
 import NavBar from './ui/NavBar'
+import StorageBanner from './ui/StorageBanner'
 import { ToastProvider } from './ui/Toast'
 
 
@@ -22,6 +23,8 @@ function Shell() {
     <div className="app">
       {pathname !== '/onboarding' && <NavBar />}
       <main className="main">
+        {/* Storage problems can mean lost data, so they are visible on every screen. */}
+        <StorageBanner />
         <Routes>
           <Route path="/" element={<Today />} />
           <Route path="/add" element={<AddFood />} />

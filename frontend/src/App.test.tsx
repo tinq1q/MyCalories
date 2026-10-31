@@ -42,3 +42,18 @@ describe('first-visit redirect', () => {
     expect(screen.getByRole('heading', { name: 'Сегодня' })).toBeInTheDocument()
   })
 })
+
+describe('storage banner in the shell', () => {
+  it('shows a storage problem on screens other than Today', () => {
+    localStorage.setItem(STORAGE_KEY, '{broken')
+    window.location.hash = '#/profile'
+    render(<App />)
+    expect(screen.getByText(/Данные браузера были повреждены/)).toBeInTheDocument()
+  })
+
+  it('shows the banner once on Today', () => {
+    localStorage.setItem(STORAGE_KEY, '{broken')
+    render(<App />)
+    expect(screen.getAllByText(/Данные браузера были повреждены/)).toHaveLength(1)
+  })
+})
