@@ -813,3 +813,107 @@ a:focus-visible {
   font-size: 13px;
   color: var(--danger);
 }
+
+/* ---------- History / Weight ---------- */
+.history,
+.weight {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.calendar,
+.chart-card {
+  padding: 14px;
+}
+
+.cal-head,
+.chart-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.cal-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 4px;
+}
+
+.cal-wd {
+  text-align: center;
+  color: var(--text-muted);
+  font-size: 12px;
+  padding-bottom: 4px;
+}
+
+.cal-day {
+  position: relative;
+  aspect-ratio: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  border: 1px solid transparent;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.05);
+  font-size: 14px;
+  cursor: pointer;
+}
+
+.cal-day.today {
+  border-color: var(--ring-from);
+}
+
+.cal-day.future {
+  opacity: 0.3;
+  cursor: default;
+}
+
+.cal-day .dot {
+  position: absolute;
+  bottom: 5px;
+}
+
+.dot {
+  display: inline-block;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+}
+
+.dot.ok { background: #00e5c3; }
+.dot.over { background: #ff453a; }
+.dot.under { background: #8e8e93; }
+.dot.logged { background: rgba(255, 255, 255, 0.5); }
+.dot.empty { display: none; }
+
+.legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 14px;
+  margin-top: 12px;
+  color: var(--text-muted);
+  font-size: 12px;
+}
+
+.legend li {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.chart-box {
+  width: 100%;
+  min-height: 200px;
+}
+
+.weight-row {
+  display: flex;
+  justify-content: space-between;
+  padding: 8px 0;
+  border-top: 1px solid rgba(255, 255, 255, 0.07);
+  font-size: 14px;
+}
