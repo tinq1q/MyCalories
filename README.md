@@ -1,0 +1,85 @@
+# SiteFood — дневник питания
+
+Личный сайт для учёта еды: что съел, сколько калорий, белков, жиров и углеводов, история, вес и экспорт в Excel.
+Интерфейс на русском. Всё бесплатно: фронтенд на GitHub Pages, бэкенд на бесплатном тарифе Render.
+
+## Как устроен проект
+
+```
+frontend/   React + Vite + TypeScript: сам сайт (дневник, норма, история, вес)
+backend/    FastAPI (Python): поиск продуктов в Open Food Facts с кэшем, экспорт/импорт .xlsx
+render.yaml конфиг деплоя бэкенда на Render
+.github/    GitHub Actions: тесты и публикация фронтенда на GitHub Pages
+```
+
+Важно: **все данные дневника хранятся в твоём браузере** (на сервер они не отправляются).
+Если очистить данные сайта или сменить браузер/телефон, дневник пропадёт. Поэтому иногда делай резервную копию:
+в профиле нажми «Скачать дневник» (получишь .xlsx), а восстановить можно через импорт.
+
+Сервер нужен только для поиска по большой базе продуктов. Без него дневник, норма, история, вес
+и добавление продуктов из своей базы и недавних работают как обычно.
+
+## Запуск локально
+
+Нужны Python 3.12 и Node.js 22.
+
+### Бэкенд
+
+```bash
+cd backend
+python -m venv .venv
+# Windows (PowerShell):   .venv\Scripts\Activate.ps1
+# Windows (cmd):          .venv\Scripts\activate.bat
+# macOS / Linux:          source .venv/bin/activate
+pip install -r requirements-dev.txt
+uvicorn app.main:app --reload --port 8000
+```
+
+API будет на http://localhost:8000.
+
+### Фронтенд
+
+```bash
+cd frontend
+npm install
+```
+
+Создай файл `frontend/.env.local` со строкой `VITE_API_URL=http://localhost:8000`, затем:
+
+```bash
+npm run dev
+```
+
+Сайт откроется на http://localhost:5173.
+
+## Тесты
+
+```bash
+cd backend && python -m pytest -q     # бэкенд (с активированным .venv)
+cd frontend && npm test               # фронтенд (vitest)
+```
+
+## Переменные окружения
+
+| Где | Переменная | Зачем |
+| --- | --- | --- |
+| backend | `ALLOWED_ORIGINS` | адреса сайтов, которым разрешён CORS, через запятую. По умолчанию `http://localhost:5173` |
+| backend | `OFF_USER_AGENT` | необязательно: User-Agent для запросов к Open Food Facts. По умолчанию `SiteFood/0.1 (personal food diary project)` |
+| frontend | `VITE_API_URL` | адрес бэкенда (на сборке) |
+| frontend | `VITE_BASE` | базовый путь сайта, для Pages это `/<имя-репозитория>/` (CI задаёт сам) |
+
+## Деплой
+
+1. **Репозиторий.** Создай репозиторий на GitHub и запушь ветку `main`.
+2. **Бэкенд на Render.** Создай сервис из `render.yaml` (New → Blueprint). В настройках задай
+   `ALLOWED_ORIGINS=https://<логин>.github.io` (только origin, без пути и без `/` в конце). Скопируй адрес сервиса, например `https://sitefood-api.onrender.com`.
+3. **Переменная API_URL.** В репозитории: Settings → Secrets and variables → Actions → Variables →
+   новая переменная `API_URL` = адрес сервиса на Render.
+4. **GitHub Pages.** Settings → Pages → Source: **GitHub Actions**.
+5. Запушь изменение в `frontend/` (или запусти workflow «Deploy frontend to GitHub Pages» вручную) —
+   сайт появится на `https://<логин>.github.io/<имя-репозитория>/`.
+
+Тесты бэкенда запускаются автоматически при изменениях в `backend/`.
+
+Заметка: бесплатный сервис на Render засыпает без запросов, первый поиск после паузы может занять около минуты.
+Перед деплоем перепроверь актуальные условия бесплатных тарифов GitHub Pages и Render: они могут измениться.
