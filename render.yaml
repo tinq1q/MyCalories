@@ -9,3 +9,5 @@ services:
     envVars:
       - key: ALLOWED_ORIGINS
         sync: false # set in the Render dashboard, e.g. https://<login>.github.io
+      - key: PYTHON_VERSION
+        value: 3.12.8 # match the version the project is developed and tested with

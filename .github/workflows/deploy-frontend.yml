@@ -13,10 +13,11 @@ permissions:
   pages: write
   id-token: write
 
-# One deploy at a time; a newer push cancels an older queued one.
+# One deploy at a time. In-progress Pages deploys are not cancelled: cutting one
+# off midway can leave the site half-published, so a newer push waits instead.
 concurrency:
   group: pages
-  cancel-in-progress: true
+  cancel-in-progress: false
 
 jobs:
   build:
@@ -33,6 +34,16 @@ jobs:
           cache-dependency-path: frontend/package-lock.json
       - run: npm ci
       - run: npx vitest run
+      # Without API_URL the site would be built to call http://localhost:8000
+      # and every server feature would silently fail for real users.
+      - name: Check the API_URL variable
+        env:
+          API_URL: ${{ vars.API_URL }}
+        run: |
+          if [ -z "$API_URL" ]; then
+            echo "::error::Repository variable API_URL is empty. Set it in Settings > Secrets and variables > Actions > Variables (e.g. https://sitefood-api.onrender.com)."
+            exit 1
+          fi
       - run: npm run build
         env:
           VITE_API_URL: ${{ vars.API_URL }}
