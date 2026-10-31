@@ -75,7 +75,7 @@ def make_client(handler, **kwargs) -> OffClient:
 def ok_handler(calls: list):
     def handler(request: httpx.Request) -> httpx.Response:
         calls.append(request)
-        return httpx.Response(200, json={"products": [GOOD, {"code": "9"}]})
+        return httpx.Response(200, json={"hits": [GOOD, {"code": "9"}]})
     return handler
 
 
@@ -146,7 +146,7 @@ async def test_429_raises_unavailable_and_not_cached():
     def handler(request):
         calls.append(request)
         status = statuses[len(calls) - 1]
-        return httpx.Response(status, json={"products": [GOOD]})
+        return httpx.Response(status, json={"hits": [GOOD]})
 
     client = make_client(handler)
     with pytest.raises(OffUnavailable):
@@ -232,7 +232,7 @@ def test_normalize_bad_macro_becomes_zero(bad):
     assert (p.protein, p.fat, p.carbs) == (0.0, 0.0, 0.0)
 
 
-@pytest.mark.parametrize("body", [{"products": None}, {"products": "x"}, {"products": {}}, [1, 2]])
+@pytest.mark.parametrize("body", [{"hits": None}, {"hits": "x"}, {"hits": {}}, [1, 2]])
 @pytest.mark.anyio
 async def test_malformed_body_raises_unavailable(body):
     client = make_client(lambda request: httpx.Response(200, json=body))
@@ -249,10 +249,25 @@ async def test_invalid_json_raises_unavailable():
 
 def test_endpoint_503_on_malformed_body():
     http = httpx.AsyncClient(
-        transport=httpx.MockTransport(lambda r: httpx.Response(200, json={"products": None}))
+        transport=httpx.MockTransport(lambda r: httpx.Response(200, json={"hits": None}))
     )
     app = create_app()
     app.dependency_overrides[get_off_client] = lambda: OffClient(http)
     res = TestClient(app).get("/api/products/off-search", params={"q": "греч"})
     assert res.status_code == 503
     assert res.json() == {"detail": "off_unavailable"}
+
+
+@pytest.mark.anyio
+async def test_uses_search_a_licious_endpoint_and_params():
+    calls = []
+    await make_client(ok_handler(calls)).search(" Греч ")
+    url = calls[0].url
+    assert f"{url.scheme}://{url.host}{url.path}" == "https://search.openfoodfacts.org/search"
+    params = dict(url.params)
+    assert params == {
+        "q": "Греч",
+        "page_size": "20",
+        "langs": "ru",
+        "fields": "code,product_name,product_name_ru,nutriments,serving_quantity",
+    }

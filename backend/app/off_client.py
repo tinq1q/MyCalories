@@ -7,7 +7,7 @@ from fastapi import Request
 
 from app.schemas import Product
 
-OFF_SEARCH_URL = "https://world.openfoodfacts.org/cgi/search.pl"
+OFF_SEARCH_URL = "https://search.openfoodfacts.org/search"
 DEFAULT_USER_AGENT = "SiteFood/0.1 (personal food diary project)"
 OFF_TIMEOUT_SECONDS = 8.0
 PAGE_SIZE = 20
@@ -94,10 +94,9 @@ class OffClient:
 
     async def _fetch(self, query: str) -> list[Product]:
         params = {
-            "search_terms": query,
-            "search_simple": 1,
-            "json": 1,
+            "q": query,
             "page_size": PAGE_SIZE,
+            "langs": "ru",
             "fields": "code,product_name,product_name_ru,nutriments,serving_quantity",
         }
         # Read at call time so the value can be changed without recreating the client.
@@ -115,7 +114,7 @@ class OffClient:
             body = response.json()
         except (httpx.HTTPError, ValueError) as exc:  # bad status or invalid JSON
             raise OffUnavailable() from exc
-        items = body.get("products") if isinstance(body, dict) else None
+        items = body.get("hits") if isinstance(body, dict) else None
         if not isinstance(items, list):
             raise OffUnavailable()
 
