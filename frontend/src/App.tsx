@@ -1,16 +1,30 @@
+import { lazy, Suspense } from 'react'
+import type { ReactNode } from 'react'
 import { HashRouter, Navigate, Route, Routes, useLocation } from 'react-router-dom'
 import { DiaryProvider, useDiary } from './storage/DiaryContext'
 import AddFood from './screens/AddFood'
 import Onboarding from './screens/Onboarding'
 import { isOnboardingSkipped } from './screens/onboardingFlag'
-import History from './screens/History'
-import Weight from './screens/Weight'
 import Profile from './screens/Profile'
 import Today from './screens/Today'
+import Glass from './ui/Glass'
 import NavBar from './ui/NavBar'
 import StorageBanner from './ui/StorageBanner'
 import { ToastProvider } from './ui/Toast'
 
+// History and Weight pull in recharts (the biggest dependency), so they are
+// split into their own chunks and downloaded only when the screen is opened.
+const History = lazy(() => import('./screens/History'))
+const Weight = lazy(() => import('./screens/Weight'))
+
+// Shown for the moment a lazy screen's code is still downloading.
+function Lazy({ children }: { children: ReactNode }) {
+  return (
+    <Suspense fallback={<Glass className="screen-loading" role="status">Загрузка…</Glass>}>
+      {children}
+    </Suspense>
+  )
+}
 
 function Shell() {
   const { pathname } = useLocation()
@@ -28,8 +42,8 @@ function Shell() {
         <Routes>
           <Route path="/" element={<Today />} />
           <Route path="/add" element={<AddFood />} />
-          <Route path="/history" element={<History />} />
-          <Route path="/weight" element={<Weight />} />
+          <Route path="/history" element={<Lazy><History /></Lazy>} />
+          <Route path="/weight" element={<Lazy><Weight /></Lazy>} />
           <Route path="/profile" element={<Profile />} />
           <Route path="/onboarding" element={<Onboarding />} />
           <Route path="*" element={<Today />} />

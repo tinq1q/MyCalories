@@ -57,3 +57,20 @@ describe('storage banner in the shell', () => {
     expect(screen.getAllByText(/Данные браузера были повреждены/)).toHaveLength(1)
   })
 })
+
+describe('lazy screens', () => {
+  it('loads History and Weight through the router', { timeout: 20_000 }, async () => {
+    const profile = { sex: 'male', age: 30, heightCm: 180, weightKg: 80, activity: 'moderate', goal: 'keep', trackWeight: true, updatedAt: '' }
+    localStorage.setItem(STORAGE_KEY, JSON.stringify({ ...emptyState(), profile }))
+    vi.stubGlobal('ResizeObserver', class { observe() {} unobserve() {} disconnect() {} })
+    window.location.hash = '#/history'
+    const { unmount } = render(<App />)
+    // Generous timeout: the first dynamic import is transformed on demand in tests.
+    expect(await screen.findByRole('heading', { name: 'История' }, { timeout: 10_000 })).toBeInTheDocument()
+    unmount()
+    window.location.hash = '#/weight'
+    render(<App />)
+    expect(await screen.findByRole('heading', { name: 'Вес' }, { timeout: 10_000 })).toBeInTheDocument()
+    vi.unstubAllGlobals()
+  })
+})

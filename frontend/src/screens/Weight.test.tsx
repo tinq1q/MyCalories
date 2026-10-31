@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { addDays, todayKey } from '../domain/dates'
@@ -87,10 +87,11 @@ describe('Weight', () => {
     expect(screen.queryByText(/Норма пересчитана/)).toBeNull()
   })
 
-  it('route #/weight redirects to / when trackWeight is off', () => {
+  it('route #/weight redirects to / when trackWeight is off', async () => {
     seed({ profile: { ...profile, trackWeight: false } })
     window.location.hash = '#/weight'
     render(<App />)
-    expect(window.location.hash).toBe('#/')
+    // Weight is lazy-loaded, so the redirect happens once its chunk has loaded.
+    await waitFor(() => expect(window.location.hash).toBe('#/'), { timeout: 10_000 })
   })
 })
