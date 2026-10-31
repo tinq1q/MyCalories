@@ -301,3 +301,60 @@ def test_non_finite_and_negative_numbers(bad):
     assert errs(r) == [("Дневник", 2)] and r.data.entries == []
     if bad != "-5":
         assert "не является числом" in r.errors[0].message
+
+
+# ------------------------------------------------------- resource limits ----
+
+import zipfile
+
+import app.excel as excel_mod
+import app.routes.diary_file as diary_file_mod
+
+
+def test_zip_bomb_rejected_before_openpyxl(monkeypatch):
+    # ~51 MB of zeros compresses to a few dozen KB: small upload, huge when unpacked.
+    buf = io.BytesIO()
+    with zipfile.ZipFile(buf, "w", zipfile.ZIP_DEFLATED) as z:
+        z.writestr("xl/worksheets/sheet1.xml", b"\0" * (51 * 1024 * 1024))
+    assert len(buf.getvalue()) < 5 * 1024 * 1024
+
+    def boom(*a, **kw):
+        raise AssertionError("openpyxl must not be called")
+    monkeypatch.setattr(excel_mod, "load_workbook", boom)
+    with pytest.raises(UnsupportedFile, match="50 МБ"):
+        parse_workbook(buf.getvalue())
+
+
+def test_uncompressed_limit_counts_all_entries(monkeypatch, sample_export):
+    # A normal SiteFood file is well over 1 KB unpacked.
+    monkeypatch.setattr(excel_mod, "MAX_UNCOMPRESSED_BYTES", 1024)
+    with pytest.raises(UnsupportedFile):
+        parse_workbook(build_workbook(sample_export))
+
+
+def test_row_cap_per_sheet(monkeypatch):
+    monkeypatch.setattr(excel_mod, "MAX_ROWS_PER_SHEET", 3)
+
+    def edit(wb):
+        for d in range(1, 6):
+            wb["Вес"].append([f"2026-10-0{d}", 60 + d])
+    r = parse_workbook(patched(empty_export(), edit))
+    assert [w.weightKg for w in r.data.weights] == [61, 62, 63]
+    assert errs(r) == [("Вес", 5)]
+    assert "3" in r.errors[0].message
+
+
+def test_import_rejects_big_content_length_before_reading(client, monkeypatch):
+    monkeypatch.setattr(diary_file_mod, "MAX_UPLOAD_BYTES", 100)
+    monkeypatch.setattr(diary_file_mod, "MULTIPART_OVERHEAD", 0)
+
+    async def no_form(*a, **kw):
+        raise AssertionError("body must not be parsed")
+    monkeypatch.setattr("starlette.requests.Request.form", no_form)
+    r = client.post("/api/diary/import", files={"file": ("x.xlsx", b"0" * 1000)})
+    assert r.status_code == 400 and "МБ" in r.json()["detail"]
+
+
+def test_import_missing_file_field(client):
+    r = client.post("/api/diary/import", files={"other": ("x.xlsx", b"123")})
+    assert r.status_code == 400 and r.json()["detail"]

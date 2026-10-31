@@ -9,6 +9,7 @@ the whole import.
 import io
 import math
 import uuid
+import zipfile
 from datetime import date, datetime
 
 from openpyxl import Workbook, load_workbook
@@ -19,6 +20,12 @@ from app.schemas import (
 )
 
 FORMAT_VERSION = 1
+
+# Import limits. An .xlsx is a zip archive: a small upload can unpack into
+# gigabytes ("zip bomb") and exhaust the server's memory, so the unpacked
+# size is checked before openpyxl sees the file. A real diary is far smaller.
+MAX_UNCOMPRESSED_BYTES = 50 * 1024 * 1024
+MAX_ROWS_PER_SHEET = 50_000
 
 SHEET_INFO = "Инфо"
 SHEET_DIARY = "Дневник"
@@ -238,13 +245,23 @@ def _sheet_ok(wb, sheet: str, headers: list[str], errors: list[ImportError_],
     return True
 
 
-def _data_rows(wb, sheet: str):
-    """Yield (excel_row_number, cells) for non-empty rows below the header."""
+def _data_rows(wb, sheet: str, errors: list[ImportError_]):
+    """Yield (excel_row_number, cells) for non-empty rows below the header.
+
+    At most MAX_ROWS_PER_SHEET rows are read; the rest are reported as one error.
+    """
     if sheet not in wb.sheetnames:
         return
+    last_row = MAX_ROWS_PER_SHEET + 1  # +1: row 1 is the header
     for i, row in enumerate(wb[sheet].iter_rows(min_row=2, values_only=True), start=2):
         if all(_is_blank(c) for c in row):
             continue
+        if i > last_row:
+            limit = f"{MAX_ROWS_PER_SHEET:,}".replace(",", " ")
+            errors.append(ImportError_(
+                sheet=sheet, row=i,
+                message=f"На листе больше {limit} строк. Строки начиная с этой не импортированы."))
+            return
         yield i, row
 
 
@@ -253,7 +270,7 @@ def _collect(wb, sheet: str, headers: list[str], parse_row, errors: list[ImportE
     if not _sheet_ok(wb, sheet, headers, errors):
         return out
     n_cols = len(headers)
-    for i, row in _data_rows(wb, sheet):
+    for i, row in _data_rows(wb, sheet, errors):
         try:
             out.append(parse_row(_cells(row, n_cols)))
         except RowError as e:
@@ -324,7 +341,7 @@ def _parse_profile(wb, errors: list[ImportError_]) -> Profile | None:
     if not _sheet_ok(wb, SHEET_PROFILE, PROFILE_HEADERS, errors, may_be_empty=True):
         return None
     rows = {}  # parameter name (lowercase) -> (excel row, value)
-    for i, row in _data_rows(wb, SHEET_PROFILE):
+    for i, row in _data_rows(wb, SHEET_PROFILE, errors):
         c = _cells(row, 2)
         if not _is_blank(c[0]):
             rows[str(c[0]).strip().lower()] = (i, c[1])
@@ -389,21 +406,45 @@ def _check_version(wb) -> None:
         raise UnsupportedFile(f"Неподдерживаемая версия формата файла: {version}.")
 
 
-def parse_workbook(content: bytes) -> ImportResult:
+UNREADABLE = "Не удалось прочитать файл. Нужен файл .xlsx, созданный SiteFood."
+
+
+def _check_unpacked_size(content: bytes) -> None:
+    """Reject non-zip files and archives whose entries unpack to too much data.
+
+    `file_size` comes from the zip directory, so nothing is decompressed here.
+    """
     try:
-        wb = load_workbook(io.BytesIO(content), data_only=True)
+        with zipfile.ZipFile(io.BytesIO(content)) as z:
+            total = sum(info.file_size for info in z.infolist())
+    except (zipfile.BadZipFile, OSError, ValueError):
+        raise UnsupportedFile(UNREADABLE) from None
+    if total > MAX_UNCOMPRESSED_BYTES:
+        limit_mb = MAX_UNCOMPRESSED_BYTES // (1024 * 1024)
+        raise UnsupportedFile(
+            f"Файл слишком большой после распаковки (больше {limit_mb} МБ). {UNREADABLE}"
+        )
+
+
+def parse_workbook(content: bytes) -> ImportResult:
+    _check_unpacked_size(content)
+    try:
+        # read_only streams the sheets row by row instead of building every cell in memory.
+        wb = load_workbook(io.BytesIO(content), read_only=True, data_only=True)
     except Exception:  # openpyxl raises many different errors for bad input
-        raise UnsupportedFile("Не удалось прочитать файл. Нужен файл .xlsx, созданный SiteFood.") from None
+        raise UnsupportedFile(UNREADABLE) from None
 
-    _check_version(wb)
-
-    errors: list[ImportError_] = []
-    data = ExportData(
-        formatVersion=FORMAT_VERSION,
-        profile=_parse_profile(wb, errors),
-        normHistory=_collect(wb, SHEET_NORMS, NORM_HEADERS, _parse_norm, errors),
-        entries=_collect(wb, SHEET_DIARY, DIARY_HEADERS, _parse_entry, errors),
-        customProducts=_collect(wb, SHEET_PRODUCTS, PRODUCT_HEADERS, _parse_custom_product, errors),
-        weights=_collect(wb, SHEET_WEIGHT, WEIGHT_HEADERS, _parse_weight, errors),
-    )
+    try:
+        _check_version(wb)
+        errors: list[ImportError_] = []
+        data = ExportData(
+            formatVersion=FORMAT_VERSION,
+            profile=_parse_profile(wb, errors),
+            normHistory=_collect(wb, SHEET_NORMS, NORM_HEADERS, _parse_norm, errors),
+            entries=_collect(wb, SHEET_DIARY, DIARY_HEADERS, _parse_entry, errors),
+            customProducts=_collect(wb, SHEET_PRODUCTS, PRODUCT_HEADERS, _parse_custom_product, errors),
+            weights=_collect(wb, SHEET_WEIGHT, WEIGHT_HEADERS, _parse_weight, errors),
+        )
+    finally:
+        wb.close()  # read-only workbooks keep the archive open until closed
     return ImportResult(data=data, errors=errors)
