@@ -56,7 +56,14 @@ class UnsupportedFile(Exception):
 
 
 class RowError(Exception):
-    """A single row/cell problem; the message is shown to the user (Russian)."""
+    """A single row/cell problem; the message is shown to the user (Russian).
+
+    `row` is only set when the parser knows the real Excel row (profile sheet).
+    """
+
+    def __init__(self, message: str, row: int | None = None):
+        super().__init__(message)
+        self.row = row
 
 
 # ---------------------------------------------------------------- export ----
@@ -113,6 +120,14 @@ def build_workbook(data: ExportData) -> bytes:
     for w in data.weights:
         weight.append([_to_date(w.date), w.weightKg])
 
+    # openpyxl turns any string starting with "=" into a live formula. Force plain
+    # text so a product named "=1+1" is stored (and read back) as that exact text.
+    for ws in wb.worksheets:
+        for row in ws.iter_rows():
+            for cell in row:
+                if isinstance(cell.value, str) and cell.data_type == "f":
+                    cell.data_type = "s"
+
     # Show dates as DD.MM.YYYY (they stay real Excel dates underneath).
     for ws, col in [(diary, "B"), (norms, "A"), (weight, "A")]:
         for cell in ws[col][1:]:
@@ -161,7 +176,9 @@ def _parse_number(v, what: str, *, positive: bool = False) -> float:
             raise RowError(f"«{what}» должно быть числом") from None
     else:
         raise RowError(f"«{what}» должно быть числом")
-    if not math.isfinite(n) or n < 0 or (positive and n == 0):
+    if not math.isfinite(n):
+        raise RowError(f"«{what}» не является числом")
+    if n < 0 or (positive and n == 0):
         raise RowError(f"«{what}» должно быть положительным числом" if positive
                        else f"«{what}» не может быть отрицательным")
     return n
@@ -203,6 +220,24 @@ def _cells(row, n: int) -> list:
     return values + [None] * (n - len(values))
 
 
+def _sheet_ok(wb, sheet: str, headers: list[str], errors: list[ImportError_],
+              *, may_be_empty: bool = False) -> bool:
+    """Check the sheet exists and its header row matches; report one error if not."""
+    if sheet not in wb.sheetnames:
+        errors.append(ImportError_(sheet=sheet, row=1, message=f"В файле нет листа «{sheet}». Лист пропущен."))
+        return False
+    first = next(wb[sheet].iter_rows(min_row=1, max_row=1, values_only=True), ())
+    if may_be_empty and all(_is_blank(c) for c in first):
+        return True
+    actual = [str(c).strip() if c is not None else "" for c in first[:len(headers)]]
+    if actual != headers:
+        errors.append(ImportError_(
+            sheet=sheet, row=1,
+            message=f"Заголовки листа «{sheet}» не совпадают с форматом SiteFood. Лист пропущен."))
+        return False
+    return True
+
+
 def _data_rows(wb, sheet: str):
     """Yield (excel_row_number, cells) for non-empty rows below the header."""
     if sheet not in wb.sheetnames:
@@ -213,8 +248,11 @@ def _data_rows(wb, sheet: str):
         yield i, row
 
 
-def _collect(wb, sheet: str, n_cols: int, parse_row, errors: list[ImportError_]) -> list:
+def _collect(wb, sheet: str, headers: list[str], parse_row, errors: list[ImportError_]) -> list:
     out = []
+    if not _sheet_ok(wb, sheet, headers, errors):
+        return out
+    n_cols = len(headers)
     for i, row in _data_rows(wb, sheet):
         try:
             out.append(parse_row(_cells(row, n_cols)))
@@ -282,6 +320,9 @@ def _parse_weight(c: list) -> WeightRecord:
 
 
 def _parse_profile(wb, errors: list[ImportError_]) -> Profile | None:
+    # An empty profile sheet is valid: it means "no profile".
+    if not _sheet_ok(wb, SHEET_PROFILE, PROFILE_HEADERS, errors, may_be_empty=True):
+        return None
     rows = {}  # parameter name (lowercase) -> (excel row, value)
     for i, row in _data_rows(wb, SHEET_PROFILE):
         c = _cells(row, 2)
@@ -300,10 +341,10 @@ def _parse_profile(wb, errors: list[ImportError_]) -> Profile | None:
         try:
             return parse(value)
         except RowError as e:
-            raise RowError(f"{name}: {e}") from None
+            raise RowError(f"{name}: {e}", row_no) from None
 
     try:
-        updated_row, updated = get("Обновлено")
+        _, updated = get("Обновлено")
         return Profile(
             sex=field("Пол", lambda v: _parse_choice(v, SEX, "Пол")),
             age=field("Возраст", lambda v: int(_parse_number(v, "Возраст", positive=True))),
@@ -317,7 +358,8 @@ def _parse_profile(wb, errors: list[ImportError_]) -> Profile | None:
             else _text(updated, "Обновлено"),
         )
     except RowError as e:
-        errors.append(ImportError_(sheet=SHEET_PROFILE, row=2, message=f"Профиль не импортирован. {e}"))
+        errors.append(ImportError_(
+            sheet=SHEET_PROFILE, row=e.row or 1, message=f"Профиль не импортирован. {e}"))
         return None
 
 
@@ -327,14 +369,24 @@ def _check_version(wb) -> None:
     if SHEET_INFO not in wb.sheetnames:
         raise UnsupportedFile("Это не файл SiteFood: нет листа «Инфо».")
     raw = wb[SHEET_INFO]["B1"].value
-    try:
-        version = int(float(str(raw).replace(",", ".")))
-    except (TypeError, ValueError):
-        raise UnsupportedFile("Не удалось определить версию формата файла.") from None
+    # Only a whole number counts: int, float equal to an integer, or a digit string.
+    version = None
+    if isinstance(raw, bool):
+        pass
+    elif isinstance(raw, int):
+        version = raw
+    elif isinstance(raw, float) and math.isfinite(raw) and raw.is_integer():
+        version = int(raw)
+    elif isinstance(raw, str) and raw.strip().isascii() and raw.strip().isdigit():
+        version = int(raw.strip())
+    if version is None:
+        raise UnsupportedFile("Не удалось определить версию формата файла.")
     if version > FORMAT_VERSION:
         raise UnsupportedFile(
             f"Файл создан более новой версией SiteFood (формат {version}). Обновите приложение."
         )
+    if version != FORMAT_VERSION:
+        raise UnsupportedFile(f"Неподдерживаемая версия формата файла: {version}.")
 
 
 def parse_workbook(content: bytes) -> ImportResult:
@@ -347,11 +399,11 @@ def parse_workbook(content: bytes) -> ImportResult:
 
     errors: list[ImportError_] = []
     data = ExportData(
-        formatVersion=1,
+        formatVersion=FORMAT_VERSION,
         profile=_parse_profile(wb, errors),
-        normHistory=_collect(wb, SHEET_NORMS, 6, _parse_norm, errors),
-        entries=_collect(wb, SHEET_DIARY, 12, _parse_entry, errors),
-        customProducts=_collect(wb, SHEET_PRODUCTS, 7, _parse_custom_product, errors),
-        weights=_collect(wb, SHEET_WEIGHT, 2, _parse_weight, errors),
+        normHistory=_collect(wb, SHEET_NORMS, NORM_HEADERS, _parse_norm, errors),
+        entries=_collect(wb, SHEET_DIARY, DIARY_HEADERS, _parse_entry, errors),
+        customProducts=_collect(wb, SHEET_PRODUCTS, PRODUCT_HEADERS, _parse_custom_product, errors),
+        weights=_collect(wb, SHEET_WEIGHT, WEIGHT_HEADERS, _parse_weight, errors),
     )
     return ImportResult(data=data, errors=errors)

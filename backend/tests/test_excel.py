@@ -149,3 +149,155 @@ def test_export_endpoint_filename(client, sample_export):
     assert "spreadsheetml.sheet" in r.headers["content-type"]
     assert "filename*=UTF-8''" in r.headers["content-disposition"]
     assert load_workbook(io.BytesIO(r.content))["Инфо"]["B1"].value == 1
+
+
+# ------------------------------------------------------- fix round 1 tests ----
+
+import datetime as dt
+
+
+def patched(data, fn):
+    """Build a workbook from `data`, let fn(wb) modify it, return bytes."""
+    wb = load_workbook(io.BytesIO(build_workbook(data)))
+    fn(wb)
+    return book_bytes(wb)
+
+
+def errs(result):
+    return [(e.sheet, e.row) for e in result.errors]
+
+
+def test_profile_error_has_real_row(sample_export):
+    def edit(wb):
+        assert wb["Профиль"]["A7"].value == "Цель"
+        wb["Профиль"]["B7"] = "куда-нибудь"
+    r = parse_workbook(patched(sample_export, edit))
+    assert r.data.profile is None
+    assert errs(r) == [("Профиль", 7)]
+    assert "Цель" in r.errors[0].message
+
+
+def test_profile_bad_number_row(sample_export):
+    def edit(wb):
+        wb["Профиль"]["B4"] = "рост"
+    assert errs(parse_workbook(patched(sample_export, edit))) == [("Профиль", 4)]
+
+
+def test_formula_like_text_roundtrips():
+    p = Product(id="=p", name="=1+1", kcal=1, protein=1, fat=1, carbs=1, source="custom")
+    data = empty_export().model_copy(update={
+        "entries": [Entry(id="=e", date="2026-10-31", meal="lunch", product=p, grams=5)],
+        "customProducts": [p],
+    })
+    assert parse_workbook(build_workbook(data)) == ImportResult(data=data, errors=[])
+    ws = load_workbook(io.BytesIO(build_workbook(data)))["Дневник"]
+    assert ws["D2"].data_type != "f"
+
+
+def test_info_only_file_reports_missing_sheets():
+    def edit(wb):
+        for name in wb.sheetnames:
+            if name != "Инфо":
+                del wb[name]
+    r = parse_workbook(patched(empty_export(), edit))
+    assert sorted(e.sheet for e in r.errors) == sorted(
+        ["Дневник", "Профиль", "История нормы", "Свои продукты", "Вес"])
+
+
+def test_missing_non_info_sheet(sample_export):
+    def edit(wb):
+        del wb["Вес"]
+    r = parse_workbook(patched(sample_export, edit))
+    assert errs(r) == [("Вес", 1)]
+    assert r.data.weights == [] and len(r.data.entries) == 2
+
+
+def test_header_mismatch_skips_sheet(sample_export):
+    def edit(wb):
+        wb["Вес"]["A1"] = "Something"
+    r = parse_workbook(patched(sample_export, edit))
+    assert errs(r) == [("Вес", 1)]
+    assert r.data.weights == []
+
+
+def test_header_mismatch_in_diary(sample_export):
+    def edit(wb):
+        wb["Дневник"]["C1"] = "Meal"
+    r = parse_workbook(patched(sample_export, edit))
+    assert errs(r) == [("Дневник", 1)] and r.data.entries == []
+
+
+@pytest.mark.parametrize("raw", ["abc", "inf", float("inf"), 0, -1, 1.9, "1.9", "", None, True])
+def test_bad_version_unsupported(raw):
+    def edit(wb):
+        wb["Инфо"]["B1"] = raw
+    with pytest.raises(UnsupportedFile):
+        parse_workbook(patched(empty_export(), edit))
+
+
+@pytest.mark.parametrize("raw", [1, 1.0, "1", " 1 "])
+def test_good_version(raw):
+    def edit(wb):
+        wb["Инфо"]["B1"] = raw
+    assert parse_workbook(patched(empty_export(), edit)).errors == []
+
+
+def test_norm_errors_and_good_row():
+    def edit(wb):
+        wb["История нормы"].append(["31.10.2026", "1800,5", 90, 60, 200, "Да"])
+        wb["История нормы"].append(["вчера", 1, 1, 1, 1, "нет"])
+        wb["История нормы"].append(["01.11.2026", 1, 1, 1, 1, "может"])
+    r = parse_workbook(patched(empty_export(), edit))
+    assert errs(r) == [("История нормы", 3), ("История нормы", 4)]
+    assert len(r.data.normHistory) == 1
+    n = r.data.normHistory[0]
+    assert (n.effectiveFrom, n.kcal, n.manual) == ("2026-10-31", 1800.5, True)
+
+
+def test_norm_bool_variants():
+    def edit(wb):
+        for v in ["да", "НЕТ", " Да "]:
+            wb["История нормы"].append([dt.date(2026, 10, 1), 1, 1, 1, 1, v])
+    r = parse_workbook(patched(empty_export(), edit))
+    assert [n.manual for n in r.data.normHistory] == [True, False, True]
+
+
+def test_weight_errors():
+    def edit(wb):
+        wb["Вес"].append(["2026-10-31", "abc"])
+        wb["Вес"].append(["2026-10-30", "60,5"])
+    r = parse_workbook(patched(empty_export(), edit))
+    assert errs(r) == [("Вес", 2)]
+    assert r.data.weights == [WeightRecord(date="2026-10-30", weightKg=60.5)]
+
+
+def test_custom_product_errors():
+    def edit(wb):
+        wb["Свои продукты"].append(["x", "", 1, 1, 1, 1, None])
+        wb["Свои продукты"].append(["", "Сыр", "300,5", 20, 25, 0, "30,5"])
+    r = parse_workbook(patched(empty_export(), edit))
+    assert errs(r) == [("Свои продукты", 2)]
+    p = r.data.customProducts[0]
+    assert (p.name, p.kcal, p.portionG, p.source) == ("Сыр", 300.5, 30.5, "custom") and p.id
+
+
+def test_real_excel_date_cell_in_hand_edit():
+    row = ["", dt.datetime(2026, 10, 31, 0, 0), "Ужин", "Хлеб", 10, 250, 8, 3, 50, None, "custom", ""]
+    r = parse_workbook(edited_book([row]))
+    assert r.errors == [] and r.data.entries[0].date == "2026-10-31"
+    assert r.data.entries[0].product.id
+
+
+def test_comma_decimals_in_other_fields():
+    row = ["", "2026-10-31", "Ужин", "Хлеб", 10, "250,5", "8,1", "3,2", "50,3", "40,5", "custom", ""]
+    p = parse_workbook(edited_book([row])).data.entries[0].product
+    assert (p.kcal, p.protein, p.fat, p.carbs, p.portionG) == (250.5, 8.1, 3.2, 50.3, 40.5)
+
+
+@pytest.mark.parametrize("bad", ["nan", "inf", "-5"])
+def test_non_finite_and_negative_numbers(bad):
+    row = ["", "2026-10-31", "Ужин", "Хлеб", bad, 1, 1, 1, 1, None, "custom", ""]
+    r = parse_workbook(edited_book([row]))
+    assert errs(r) == [("Дневник", 2)] and r.data.entries == []
+    if bad != "-5":
+        assert "не является числом" in r.errors[0].message
