@@ -3,7 +3,7 @@ import type { ReactNode } from 'react'
 import { todayKey } from '../domain/dates'
 import type { DiaryState, Entry, ExportData, Norm, Product, Profile, WeightRecord } from '../domain/types'
 import { diaryReducer } from './diaryReducer'
-import { loadState, saveState } from './storage'
+import { STORAGE_KEY, loadState, parseStoredState, saveState } from './storage'
 import type { LoadWarning } from './storage'
 
 export interface DiaryApi {
@@ -43,6 +43,8 @@ export function DiaryProvider({ children }: { children: ReactNode }) {
   const [discarded, setDiscarded] = useState(false)
   const blocked = warning === 'corrupt-no-backup' && !discarded
   const first = useRef(true)
+  // The state object last taken from another tab: it is already in storage, so saving it is pointless.
+  const reloaded = useRef<DiaryState | null>(null)
   useEffect(() => {
     if (blocked) return
     // After a confirmed discard, save right away (the stored data is being replaced).
@@ -50,8 +52,26 @@ export function DiaryProvider({ children }: { children: ReactNode }) {
       first.current = false
       return
     }
+    if (state === reloaded.current) return
     setSaveFailed(!saveState(state))
   }, [state, blocked, discarded])
+
+  // Every tab keeps the whole diary in memory and saves all of it on each change.
+  // Without this, a tab left open in the background would overwrite entries added
+  // in another tab with its stale copy. The browser fires `storage` only in the
+  // *other* tabs, so we adopt their saved state before making our own next change.
+  useEffect(() => {
+    const onStorage = (e: StorageEvent) => {
+      if (e.key !== STORAGE_KEY || e.newValue === null) return
+      const next = parseStoredState(e.newValue)
+      // Unreadable data is never adopted: that would empty this tab's diary.
+      if (next === null) return
+      reloaded.current = next
+      dispatch({ type: 'reload', state: next })
+    }
+    window.addEventListener('storage', onStorage)
+    return () => window.removeEventListener('storage', onStorage)
+  }, [])
   const confirmDiscardCorrupt = useCallback(() => setDiscarded(true), [])
 
   const addEntry = useCallback((e: Omit<Entry, 'id'>) => {

@@ -157,6 +157,35 @@ describe('DiaryContext', () => {
     expect(JSON.parse(localStorage.getItem(STORAGE_KEY)!).customProducts).toHaveLength(1)
   })
 
+  it('picks up changes saved by another tab instead of overwriting them', () => {
+    const { result } = setup()
+    act(() => { result.current.addEntry({ date: '2026-11-01', meal: 'lunch', product: prod('a'), grams: 100 }) })
+    // "Another tab" saves its own state (it saw entry a and added entry b).
+    const other = JSON.parse(localStorage.getItem(STORAGE_KEY)!)
+    other.entries.push({ id: 'from-other-tab', date: '2026-11-01', meal: 'dinner', product: prod('b'), grams: 50 })
+    const raw = JSON.stringify(other)
+    localStorage.setItem(STORAGE_KEY, raw)
+    act(() => { window.dispatchEvent(new StorageEvent('storage', { key: STORAGE_KEY, newValue: raw })) })
+    expect(result.current.state.entries).toHaveLength(2)
+    // A later local change must keep the other tab's entry.
+    act(() => { result.current.addEntry({ date: '2026-11-01', meal: 'snack', product: prod('c'), grams: 10 }) })
+    const saved = JSON.parse(localStorage.getItem(STORAGE_KEY)!)
+    expect(saved.entries.map((e: { product: Product }) => e.product.id).sort()).toEqual(['a', 'b', 'c'])
+  })
+
+  it('ignores unreadable data from another tab and the reload itself does not save', () => {
+    const { result } = setup()
+    act(() => { result.current.addEntry({ date: '2026-11-01', meal: 'lunch', product: prod('a'), grams: 100 }) })
+    const setItem = vi.spyOn(Storage.prototype, 'setItem')
+    act(() => { window.dispatchEvent(new StorageEvent('storage', { key: STORAGE_KEY, newValue: '{oops' })) })
+    expect(result.current.state.entries).toHaveLength(1)
+    const raw = JSON.stringify({ ...JSON.parse(localStorage.getItem(STORAGE_KEY)!), entries: [] })
+    act(() => { window.dispatchEvent(new StorageEvent('storage', { key: STORAGE_KEY, newValue: raw })) })
+    expect(result.current.state.entries).toHaveLength(0)
+    // Neither event wrote anything back to storage.
+    expect(setItem).not.toHaveBeenCalled()
+  })
+
   it('applyImport merges or replaces; markExported sets timestamp', () => {
     const { result } = setup()
     act(() => { result.current.addEntry({ date: '2026-11-01', meal: 'lunch', product: prod('a'), grams: 100 }) })

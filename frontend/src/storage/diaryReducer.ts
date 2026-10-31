@@ -16,6 +16,8 @@ export type DiaryAction =
   | { type: 'addWeight'; weight: WeightRecord; now: string }
   | { type: 'import'; data: ExportData; mode: 'merge' | 'replace' }
   | { type: 'markExported'; now: string }
+  // Replace the whole state with what another browser tab saved.
+  | { type: 'reload'; state: DiaryState }
 
 // Add a record; one with the same effectiveFrom is replaced, not duplicated.
 function upsertNorm(history: NormRecord[], rec: NormRecord): NormRecord[] {
@@ -83,5 +85,7 @@ export function diaryReducer(state: DiaryState, action: DiaryAction): DiaryState
       return action.mode === 'merge' ? mergeDiary(state, action.data) : replaceDiary(state, action.data)
     case 'markExported':
       return { ...state, lastExportAt: action.now }
+    case 'reload':
+      return action.state
   }
 }

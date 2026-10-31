@@ -28,6 +28,20 @@ function looksValid(v: unknown): v is Record<string, unknown> {
   return (['entries', 'customProducts', 'normHistory', 'weights'] as const).every((k) => Array.isArray(v[k]))
 }
 
+// Parse a stored JSON string into a state, or null when it is unreadable.
+// Pure (no storage writes), so it is also safe for data saved by another tab.
+export function parseStoredState(raw: string): DiaryState | null {
+  let parsed: unknown
+  try {
+    parsed = JSON.parse(raw)
+  } catch {
+    return null
+  }
+  if (!looksValid(parsed)) return null
+  // Defaults fill fields that older/partial saves may lack.
+  return { ...emptyState(), ...parsed } as DiaryState
+}
+
 // `corruptRaw` is set only for 'corrupt-no-backup': the raw data exists nowhere else.
 export function loadState(): { state: DiaryState; warning: LoadWarning; corruptRaw?: string } {
   let raw: string | null
@@ -38,13 +52,8 @@ export function loadState(): { state: DiaryState; warning: LoadWarning; corruptR
   }
   if (raw === null) return { state: emptyState(), warning: null }
 
-  let parsed: unknown
-  try {
-    parsed = JSON.parse(raw)
-  } catch {
-    parsed = undefined
-  }
-  if (!looksValid(parsed)) {
+  const state = parseStoredState(raw)
+  if (state === null) {
     // Keep the unreadable data so the user can recover it manually.
     try {
       localStorage.setItem(CORRUPT_BACKUP_KEY, raw)
@@ -54,8 +63,7 @@ export function loadState(): { state: DiaryState; warning: LoadWarning; corruptR
     }
     return { state: emptyState(), warning: 'corrupt' }
   }
-  // Defaults fill fields that older/partial saves may lack.
-  return { state: { ...emptyState(), ...parsed } as DiaryState, warning: null }
+  return { state, warning: null }
 }
 
 export function saveState(s: DiaryState): boolean {
