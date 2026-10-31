@@ -38,8 +38,21 @@ export function parseStoredState(raw: string): DiaryState | null {
     return null
   }
   if (!looksValid(parsed)) return null
-  // Defaults fill fields that older/partial saves may lack.
-  return { ...emptyState(), ...parsed } as DiaryState
+  return coerceShape(parsed)
+}
+
+const LIST_FIELDS = ['entries', 'normHistory', 'customProducts', 'weights', 'recentProducts'] as const
+
+// Defaults fill fields that older/partial saves may lack, and fields of the
+// wrong type (e.g. a hand-edited value) are reset so later code like
+// `recentProducts.filter` cannot crash. The four core lists are already
+// guaranteed by looksValid; recentProducts is only a cache, so resetting it is safe.
+function coerceShape(v: Record<string, unknown>): DiaryState {
+  const s = { ...emptyState(), ...v } as Record<string, unknown>
+  for (const k of LIST_FIELDS) if (!Array.isArray(s[k])) s[k] = []
+  if (typeof s.lastExportAt !== 'string') s.lastExportAt = null
+  if (!isObject(s.profile)) s.profile = null
+  return s as unknown as DiaryState
 }
 
 // `corruptRaw` is set only for 'corrupt-no-backup': the raw data exists nowhere else.

@@ -63,3 +63,34 @@ describe('storage', () => {
     expect(saveState(emptyState())).toBe(false)
   })
 })
+
+describe('loadState shape coercion', () => {
+  it('replaces wrongly typed optional fields with defaults instead of keeping them', () => {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify({
+      ...emptyState(),
+      entries: [],
+      recentProducts: 'oops',
+      lastExportAt: 12345,
+      profile: 'nobody',
+    }))
+    const r = loadState()
+    expect(r.warning).toBeNull()
+    expect(r.state.recentProducts).toEqual([])
+    expect(r.state.lastExportAt).toBeNull()
+    expect(r.state.profile).toBeNull()
+  })
+
+  it('missing optional fields get defaults; valid values are kept', () => {
+    const { recentProducts: _r, lastExportAt: _l, ...partial } = { ...emptyState(), lastExportAt: 'x' }
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(partial))
+    expect(loadState().state).toEqual(emptyState())
+    const ok = { ...emptyState(), lastExportAt: '2026-01-01T00:00:00.000Z' }
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(ok))
+    expect(loadState().state).toEqual(ok)
+  })
+
+  it('a core list that is not an array still counts as corrupt (backed up, user warned)', () => {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify({ ...emptyState(), weights: {} }))
+    expect(loadState().warning).toBe('corrupt')
+  })
+})
