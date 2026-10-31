@@ -271,3 +271,17 @@ async def test_uses_search_a_licious_endpoint_and_params():
         "langs": "ru",
         "fields": "code,product_name,product_name_ru,nutriments,serving_quantity",
     }
+
+
+@pytest.mark.parametrize("nutriments", [["energy-kcal_100g", 100], "energy-kcal_100g=100", 5])
+@pytest.mark.anyio
+async def test_malformed_nutriments_skip_only_that_product(nutriments):
+    hits = [with_(code="bad", nutriments=nutriments), "not a product", None, GOOD]
+    client = make_client(lambda request: httpx.Response(200, json={"hits": hits}))
+    results = await client.search("греч")
+    assert [p.id for p in results] == ["off-123"]
+
+
+@pytest.mark.parametrize("nutriments", [["x"], "x"])
+def test_normalize_rejects_non_dict_nutriments(nutriments):
+    assert normalize_off_product(with_(nutriments=nutriments)) is None

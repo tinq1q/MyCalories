@@ -43,7 +43,11 @@ def normalize_off_product(raw: dict) -> Product | None:
     """
     code = str(raw.get("code") or "").strip()
     name = str(raw.get("product_name_ru") or raw.get("product_name") or "").strip()
-    nutriments = raw.get("nutriments") or {}
+    nutriments = raw.get("nutriments")
+    # OFF data is crowd-edited: a list/string here must drop only this product
+    # (it then has no kcal), not crash the whole search with a 500.
+    if not isinstance(nutriments, dict):
+        nutriments = {}
     kcal = _to_float(nutriments.get("energy-kcal_100g"))
     if not code or not name or kcal is None or kcal < 0:
         return None
