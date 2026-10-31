@@ -1,5 +1,6 @@
 import { HashRouter, Route, Routes, useLocation } from 'react-router-dom'
 import { DiaryProvider } from './storage/DiaryContext'
+import AddFood from './screens/AddFood'
 import Placeholder from './screens/Placeholder'
 import Today from './screens/Today'
 import NavBar from './ui/NavBar'
@@ -13,7 +14,7 @@ function Shell() {
       <main className="main">
         <Routes>
           <Route path="/" element={<Today />} />
-          <Route path="/add" element={<Placeholder title="Добавить еду" />} />
+          <Route path="/add" element={<AddFood />} />
           <Route path="/history" element={<Placeholder title="История" />} />
           <Route path="/weight" element={<Placeholder title="Вес" />} />
           <Route path="/profile" element={<Placeholder title="Профиль" />} />

@@ -1,6 +1,6 @@
-import { useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
-import { addDays, todayKey, toDayKey } from '../domain/dates'
+import { addDays, isValidDayKey, todayKey } from '../domain/dates'
 import { dayTotals, mealTotals, nutrientsFor } from '../domain/nutrition'
 import { normForDate } from '../domain/norm'
 import { MEALS, MEAL_LABELS } from '../domain/types'
@@ -17,9 +17,6 @@ const localDate = (key: string) => {
   const [y, m, d] = key.split('-').map(Number)
   return new Date(y, m - 1, d)
 }
-// Valid only if the key survives a Date round trip (rejects 2025-02-31, which would roll over).
-const isValidDay = (key: string | null): key is string =>
-  key !== null && /^\d{4}-\d{2}-\d{2}$/.test(key) && toDayKey(localDate(key)) === key
 const dateFmt =new Intl.DateTimeFormat('ru-RU', { day: 'numeric', month: 'long' })
 const weekdayFmt = new Intl.DateTimeFormat('ru-RU', { weekday: 'long' })
 
@@ -36,7 +33,23 @@ export default function Today() {
   const [params, setParams] = useSearchParams()
   const today = todayKey()
   const raw = params.get('day')
-  const day = isValidDay(raw) ? raw : today
+  const day = isValidDayKey(raw) ? raw : today
+  // Entry just added from the add-food flow: highlighted briefly, then the param is dropped.
+  const newId = params.get('new')
+  useEffect(() => {
+    if (!newId) return
+    const t = window.setTimeout(() => {
+      setParams(
+        (p) => {
+          const next = new URLSearchParams(p)
+          next.delete('new')
+          return next
+        },
+        { replace: true },
+      )
+    }, 2000)
+    return () => window.clearTimeout(t)
+  }, [newId, setParams])
   const [editing, setEditing] = useState<Entry | null>(null)
   const touchStart = useRef<{ x: number; y: number } | null>(null)
 
@@ -114,7 +127,7 @@ export default function Today() {
               <ul>
                 {items.map((e) => (
                   <li key={e.id}>
-                    <button type="button" className="entry" onClick={() => setEditing(e)}>
+                    <button type="button" className={e.id === newId ? 'entry is-new' : 'entry'} onClick={() => setEditing(e)}>
                       <span className="entry-name">{e.product.name}</span>
                       <span className="muted">{fmt(e.grams)} г</span>
                       <span className="entry-kcal">{fmt(nutrientsFor(e.product, e.grams).kcal)}</span>

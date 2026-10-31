@@ -1,13 +1,8 @@
 import { useState } from 'react'
 import type { Entry } from '../domain/types'
+import { parseGrams } from '../domain/grams'
 import { nutrientsFor } from '../domain/nutrition'
 import { fmt } from '../ui/format'
-
-// Accepts "150", "150.5" and "150,5"; null when not a positive number.
-function parseGrams(text: string): number | null {
-  const n = Number(text.trim().replace(',', '.'))
-  return Number.isFinite(n) && n > 0 && n <= 10000 ? n : null
-}
 
 interface Props {
   entry: Entry

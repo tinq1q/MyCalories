@@ -1,6 +1,7 @@
 import { fireEvent, render, screen, within } from '@testing-library/react'
 import { MemoryRouter, useLocation } from 'react-router-dom'
-import { beforeEach, describe, expect, it } from 'vitest'
+import { act } from '@testing-library/react'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { addDays, todayKey } from '../domain/dates'
 import type { DiaryState, Entry, Meal, Product } from '../domain/types'
 import { emptyState, STORAGE_KEY } from '../storage/storage'
@@ -155,5 +156,24 @@ describe('Today', () => {
     fireEvent.change(screen.getByLabelText('Граммы'), { target: { value: '500,5' } })
     fireEvent.click(screen.getByRole('button', { name: 'Сохранить' }))
     expect(screen.getAllByText(hasText('1 221')).length).toBeGreaterThan(0)
+  })
+
+  describe('new entry highlight', () => {
+    afterEach(() => vi.useRealTimers())
+
+    it('highlights ?new=<id> for 2 s, then drops the param', () => {
+      vi.useFakeTimers()
+      seed(withNorm)
+      view(`/?day=${todayKey()}&new=b`)
+      const btn = screen.getByRole('button', { name: /Овсянка.*720/ })
+      expect(btn).toHaveClass('is-new')
+      expect(screen.getByRole('button', { name: /Овсянка.*600/ })).not.toHaveClass('is-new')
+      act(() => {
+        vi.advanceTimersByTime(2000)
+      })
+      expect(screen.getByRole('button', { name: /Овсянка.*720/ })).not.toHaveClass('is-new')
+      expect(screen.getByTestId('loc')).toHaveTextContent(`/?day=${todayKey()}`)
+      expect(screen.getByTestId('loc').textContent).not.toContain('new=')
+    })
   })
 })
