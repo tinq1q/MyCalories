@@ -1,26 +1,20 @@
 import { HashRouter, Navigate, Route, Routes, useLocation } from 'react-router-dom'
 import { DiaryProvider, useDiary } from './storage/DiaryContext'
 import AddFood from './screens/AddFood'
-import Onboarding, { ONBOARDING_SKIPPED_KEY } from './screens/Onboarding'
+import Onboarding from './screens/Onboarding'
+import { isOnboardingSkipped } from './screens/onboardingFlag'
 import Placeholder from './screens/Placeholder'
 import Profile from './screens/Profile'
 import Today from './screens/Today'
 import NavBar from './ui/NavBar'
 import { ToastProvider } from './ui/Toast'
 
-function skippedOnboarding(): boolean {
-  try {
-    return localStorage.getItem(ONBOARDING_SKIPPED_KEY) !== null
-  } catch {
-    return false
-  }
-}
 
 function Shell() {
   const { pathname } = useLocation()
-  const { state } = useDiary()
+  const { state, warning } = useDiary()
   // First visit: no profile, nothing recorded and the questionnaire was not skipped.
-  if (pathname !== '/onboarding' && !state.profile && state.entries.length === 0 && !skippedOnboarding()) {
+  if (pathname !== '/onboarding' && !state.profile && state.entries.length === 0 && !warning && !isOnboardingSkipped()) {
     return <Navigate to="/onboarding" replace />
   }
   return (

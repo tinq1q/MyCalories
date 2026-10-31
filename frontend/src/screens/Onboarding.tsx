@@ -4,22 +4,18 @@ import { calcNorm } from '../domain/norm'
 import { useDiary } from '../storage/DiaryContext'
 import Glass from '../ui/Glass'
 import NormPreview from './NormPreview'
-import ProfileFields, { emptyDraft, profileFromDraft } from './ProfileFields'
-
-export const ONBOARDING_SKIPPED_KEY = 'sitefood:onboarding-skipped'
+import { markOnboardingSkipped } from './onboardingFlag'
+import ProfileFields, { draftFrom, emptyDraft, profileFromDraft } from './ProfileFields'
 
 export default function Onboarding() {
-  const { setProfile } = useDiary()
+  const { state, setProfile } = useDiary()
   const navigate = useNavigate()
-  const [draft, setDraft] = useState(emptyDraft)
+  // Re-taking the questionnaire starts from the current profile.
+  const [draft, setDraft] = useState(() => (state.profile ? draftFrom(state.profile) : emptyDraft))
   const profile = profileFromDraft(draft)
 
   const skip = () => {
-    try {
-      localStorage.setItem(ONBOARDING_SKIPPED_KEY, '1')
-    } catch {
-      /* without storage the questionnaire is simply offered again next visit */
-    }
+    markOnboardingSkipped()
     navigate('/')
   }
   const done = () => {

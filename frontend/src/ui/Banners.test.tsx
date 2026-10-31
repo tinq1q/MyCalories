@@ -3,7 +3,7 @@ import { MemoryRouter } from 'react-router-dom'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { DiaryState, Entry } from '../domain/types'
 import { CORRUPT_BACKUP_KEY, emptyState, STORAGE_KEY } from '../storage/storage'
-import { DiaryProvider } from '../storage/DiaryContext'
+import { DiaryProvider, useDiary } from '../storage/DiaryContext'
 import BackupReminder, { REMINDER_HIDDEN_KEY } from './BackupReminder'
 import StorageBanner from './StorageBanner'
 import { ToastProvider } from './Toast'
@@ -110,5 +110,27 @@ describe('StorageBanner', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Начать заново' }))
     expect(confirm).toHaveBeenCalledTimes(2)
     expect(screen.queryByText(/новые записи не сохраняются/)).not.toBeInTheDocument()
+  })
+
+  it('save failure shows the "cannot save" banner with a download button', () => {
+    function Trigger() {
+      const { markExported } = useDiary()
+      return <button onClick={markExported}>change</button>
+    }
+    view(
+      <>
+        <StorageBanner />
+        <Trigger />
+      </>,
+    )
+    expect(screen.queryByText(/Браузер не даёт сохранять данные/)).not.toBeInTheDocument()
+    const realSet = Storage.prototype.setItem
+    vi.spyOn(Storage.prototype, 'setItem').mockImplementation(function (this: Storage, k: string, v: string) {
+      if (k === STORAGE_KEY) throw new Error('quota')
+      return realSet.call(this, k, v)
+    })
+    fireEvent.click(screen.getByText('change'))
+    expect(screen.getByText(/Браузер не даёт сохранять данные/)).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Скачать' })).toBeInTheDocument()
   })
 })

@@ -138,13 +138,61 @@ describe('Profile', () => {
     expect(stored().entries.map((e: { id: string }) => e.id)).toEqual(['i1', 'i2', 'i3'])
   })
 
-  it('import failure shows a server message and leaves data untouched', async () => {
-    seed({ profile, normHistory: [calc] })
+  it('import failure shows a server message and leaves existing data untouched', async () => {
+    seed({ profile, normHistory: [calc], entries: [{ id: 'old', date: '2026-10-02', meal: 'lunch', product: prod, grams: 5 }] })
     mocks.importDiary.mockRejectedValue(new ApiError('network'))
     view()
     await pickFile()
     expect(await screen.findByText('Не удалось связаться с сервером, попробуйте ещё раз')).toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'Объединить' })).not.toBeInTheDocument()
-    expect(stored().entries).toHaveLength(0)
+    expect(mocks.importDiary).toHaveBeenCalledTimes(1)
+    expect(stored().entries.map((e: { id: string }) => e.id)).toEqual(['old'])
+    expect(stored().profile.weightKg).toBe(80)
+  })
+
+  it('bad file (400) shows the file message, not the server one', async () => {
+    mocks.importDiary.mockRejectedValue(new ApiError('bad-file', 'nope'))
+    view()
+    await pickFile()
+    expect(await screen.findByText(/Не удалось прочитать файл/)).toBeInTheDocument()
+    expect(screen.queryByText(/связаться с сервером/)).not.toBeInTheDocument()
+  })
+
+  it('"Заменить всё" is disabled for an empty file; merge stays available', async () => {
+    mocks.importDiary.mockResolvedValue({ data: { ...imported(), entries: [] }, errors: [] })
+    view()
+    await pickFile()
+    expect(await screen.findByRole('button', { name: 'Заменить всё' })).toBeDisabled()
+    expect(screen.getByRole('button', { name: 'Объединить' })).toBeEnabled()
+  })
+
+  it('replace confirm text carries the counts', async () => {
+    mocks.importDiary.mockResolvedValue({ data: imported(), errors: [] })
+    const confirm = vi.spyOn(window, 'confirm').mockReturnValue(false)
+    view()
+    await pickFile()
+    fireEvent.click(await screen.findByRole('button', { name: 'Заменить всё' }))
+    expect(confirm.mock.calls[0][0]).toContain('3 записей')
+  })
+
+  it('the trackWeight toggle reaches the saved profile', () => {
+    seed({ profile, normHistory: [calc] })
+    view()
+    fireEvent.click(screen.getByLabelText('Отслеживать вес'))
+    fireEvent.click(screen.getByRole('button', { name: 'Сохранить' }))
+    expect(stored().profile.trackWeight).toBe(false)
+  })
+
+  it('after an import the form shows the imported profile, not stale values', async () => {
+    seed({ profile, normHistory: [calc] })
+    const other: ProfileT = { ...profile, weightKg: 70, age: 44, updatedAt: '2026-06-01T00:00:00.000Z' }
+    mocks.importDiary.mockResolvedValue({ data: { ...imported(), profile: other }, errors: [] })
+    vi.spyOn(window, 'confirm').mockReturnValue(true)
+    view()
+    expect(screen.getByLabelText('Вес, кг')).toHaveValue('80')
+    await pickFile()
+    fireEvent.click(await screen.findByRole('button', { name: 'Заменить всё' }))
+    expect(screen.getByLabelText('Вес, кг')).toHaveValue('70')
+    expect(screen.getByLabelText('Возраст')).toHaveValue('44')
   })
 })

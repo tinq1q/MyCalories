@@ -8,36 +8,45 @@ import ImportPanel from './ImportPanel'
 import NormCard from './NormCard'
 import ProfileFields, { draftFrom, emptyDraft, profileFromDraft } from './ProfileFields'
 
-export default function Profile() {
+function QuestionnaireCard() {
   const { state, setProfile } = useDiary()
   const toast = useToast()
   const navigate = useNavigate()
-  const { run: exportDiary, busy } = useExport()
   const [draft, setDraft] = useState(() => (state.profile ? draftFrom(state.profile) : emptyDraft))
   const profile = profileFromDraft(draft)
 
   return (
+    <Glass as="section" className="card-stack">
+      <h2>Анкета</h2>
+      <ProfileFields draft={draft} onChange={setDraft} />
+      <button
+        type="button"
+        className="btn primary"
+        disabled={!profile}
+        onClick={() => {
+          if (!profile) return
+          setProfile(profile)
+          toast.show('Профиль сохранён')
+        }}
+      >
+        Сохранить
+      </button>
+      <button type="button" className="btn" onClick={() => navigate('/onboarding')}>
+        Пройти анкету заново
+      </button>
+    </Glass>
+  )
+}
+
+export default function Profile() {
+  const { state } = useDiary()
+  const { run: exportDiary, busy } = useExport()
+
+  return (
     <div className="profile">
       <h1>Профиль</h1>
-      <Glass as="section" className="card-stack">
-        <h2>Анкета</h2>
-        <ProfileFields draft={draft} onChange={setDraft} />
-        <button
-          type="button"
-          className="btn primary"
-          disabled={!profile}
-          onClick={() => {
-            if (!profile) return
-            setProfile(profile)
-            toast.show('Профиль сохранён')
-          }}
-        >
-          Сохранить
-        </button>
-        <button type="button" className="btn" onClick={() => navigate('/onboarding')}>
-          Пройти анкету заново
-        </button>
-      </Glass>
+      {/* Keyed so the form re-syncs when the stored profile changes (e.g. after an import). */}
+      <QuestionnaireCard key={state.profile?.updatedAt ?? 'none'} />
 
       <NormCard />
 

@@ -34,9 +34,15 @@ export default function ImportPanel() {
     }
   }
 
+  // An empty file must not be able to wipe the diary.
+  const empty =
+    !!result && result.data.entries.length + result.data.customProducts.length + result.data.weights.length === 0 && !result.data.profile
+
   const apply = (mode: 'merge' | 'replace') => {
     if (!result) return
-    if (mode === 'replace' && !window.confirm('Заменить весь дневник данными из файла? Текущие записи будут потеряны.')) return
+    const d = result.data
+    const counts = `${d.entries.length} записей, ${d.customProducts.length} своих продуктов, ${d.weights.length} записей веса`
+    if (mode === 'replace' && !window.confirm(`Заменить весь дневник данными из файла (${counts})? Текущие записи будут удалены.`)) return
     applyImport(result.data, mode)
     setResult(null)
     toast.show(mode === 'merge' ? 'Дневник объединён с файлом' : 'Дневник заменён данными из файла')
@@ -70,7 +76,7 @@ export default function ImportPanel() {
             </ul>
           )}
           <div className="sheet-actions">
-            <button type="button" className="btn danger" onClick={() => apply('replace')}>
+            <button type="button" className="btn danger" disabled={empty} onClick={() => apply('replace')}>
               Заменить всё
             </button>
             <button type="button" className="btn primary" onClick={() => apply('merge')}>
