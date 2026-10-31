@@ -6,7 +6,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.off_client import OffClient
-from app.routes import products
+from app.routes import diary_file, products
 
 DEFAULT_ORIGINS = "http://localhost:5173"
 
@@ -37,6 +37,7 @@ def create_app() -> FastAPI:
         return {"ok": True}
 
     application.include_router(products.router)
+    application.include_router(diary_file.router)
     return application
 
 
