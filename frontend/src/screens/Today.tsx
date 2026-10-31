@@ -1,6 +1,6 @@
 import { useRef, useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
-import { addDays, todayKey } from '../domain/dates'
+import { addDays, todayKey, toDayKey } from '../domain/dates'
 import { dayTotals, mealTotals, nutrientsFor } from '../domain/nutrition'
 import { normForDate } from '../domain/norm'
 import { MEALS, MEAL_LABELS } from '../domain/types'
@@ -13,12 +13,14 @@ import { fmt } from '../ui/format'
 import { useToast } from '../ui/Toast'
 import EntrySheet from './EntrySheet'
 
-const DAY_RE = /^\d{4}-\d{2}-\d{2}$/
 const localDate = (key: string) => {
   const [y, m, d] = key.split('-').map(Number)
   return new Date(y, m - 1, d)
 }
-const dateFmt = new Intl.DateTimeFormat('ru-RU', { day: 'numeric', month: 'long' })
+// Valid only if the key survives a Date round trip (rejects 2025-02-31, which would roll over).
+const isValidDay = (key: string | null): key is string =>
+  key !== null && /^\d{4}-\d{2}-\d{2}$/.test(key) && toDayKey(localDate(key)) === key
+const dateFmt =new Intl.DateTimeFormat('ru-RU', { day: 'numeric', month: 'long' })
 const weekdayFmt = new Intl.DateTimeFormat('ru-RU', { weekday: 'long' })
 
 function dayTitle(day: string, today: string): { title: string; sub: string } {
@@ -34,7 +36,7 @@ export default function Today() {
   const [params, setParams] = useSearchParams()
   const today = todayKey()
   const raw = params.get('day')
-  const day = raw && DAY_RE.test(raw) ? raw : today
+  const day = isValidDay(raw) ? raw : today
   const [editing, setEditing] = useState<Entry | null>(null)
   const touchStart = useRef<{ x: number; y: number } | null>(null)
 
@@ -68,14 +70,14 @@ export default function Today() {
       }}
     >
       <header className="day-header">
-        <button type="button" className="icon-btn" title="Предыдущий день" onClick={() => go(-1)}>
+        <button type="button" className="icon-btn" aria-label="Предыдущий день" onClick={() => go(-1)}>
           ‹
         </button>
         <div className="day-title">
           <h1>{title}</h1>
           <span className="muted">{sub}</span>
         </div>
-        <button type="button" className="icon-btn" title="Следующий день" onClick={() => go(1)}>
+        <button type="button" className="icon-btn" aria-label="Следующий день" onClick={() => go(1)}>
           ›
         </button>
       </header>

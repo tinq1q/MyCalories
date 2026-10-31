@@ -1,11 +1,12 @@
 import { fireEvent, render, screen, within } from '@testing-library/react'
-import { MemoryRouter } from 'react-router-dom'
+import { MemoryRouter, useLocation } from 'react-router-dom'
 import { beforeEach, describe, expect, it } from 'vitest'
 import { addDays, todayKey } from '../domain/dates'
 import type { DiaryState, Entry, Meal, Product } from '../domain/types'
 import { emptyState, STORAGE_KEY } from '../storage/storage'
 import { DiaryProvider } from '../storage/DiaryContext'
 import { ToastProvider } from '../ui/Toast'
+import NavBar from '../ui/NavBar'
 import Today from './Today'
 
 const prod: Product = { id: 'p', name: 'Овсянка', kcal: 100, protein: 10, fat: 5, carbs: 20, portionG: null, source: 'base' }
@@ -19,12 +20,19 @@ const withNorm: Partial<DiaryState> = {
   entries: [entry('a', 'breakfast', 600), entry('b', 'lunch', 720)],
 }
 
-function view() {
+function Loc() {
+  const l = useLocation()
+  return <output data-testid="loc">{l.pathname + l.search}</output>
+}
+
+function view(url = '/') {
   return render(
-    <MemoryRouter>
+    <MemoryRouter initialEntries={[url]}>
       <DiaryProvider>
         <ToastProvider>
           <Today />
+          <NavBar />
+          <Loc />
         </ToastProvider>
       </DiaryProvider>
     </MemoryRouter>,
@@ -65,10 +73,68 @@ describe('Today', () => {
     seed(withNorm)
     view()
     expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('Сегодня')
-    fireEvent.click(screen.getByRole('button', { name: '›' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Следующий день' }))
+    expect(screen.getByTestId('loc')).toHaveTextContent(`/?day=${addDays(todayKey(), 1)}`)
     expect(screen.getByRole('heading', { level: 1 })).not.toHaveTextContent('Сегодня')
     expect(screen.getAllByText('ещё пусто')).toHaveLength(4)
-    expect(addDays(todayKey(), 1)).toBeTruthy()
+    fireEvent.click(screen.getByRole('button', { name: 'Предыдущий день' }))
+    expect(screen.getByTestId('loc')).toHaveTextContent(`/?day=${todayKey()}`)
+    expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('Сегодня')
+  })
+
+  it('shows "сверх нормы" when over the norm', () => {
+    seed({ ...withNorm, entries: [entry('a', 'breakfast', 2300)] })
+    view()
+    expect(screen.getByText(hasText('сверх нормы 300'))).toBeInTheDocument()
+    expect(screen.queryByText(hasText('осталось'))).toBeNull()
+  })
+
+  it('FAB links to /add for the shown day', () => {
+    seed(withNorm)
+    view('/?day=2025-03-04')
+    expect(screen.getByRole('link', { name: 'Добавить еду' })).toHaveAttribute('href', '/add?day=2025-03-04')
+  })
+
+  it.each(['garbage', '2025-02-31', '2025-13-01', ''])('invalid ?day=%s falls back to today', (bad) => {
+    seed(withNorm)
+    view(`/?day=${bad}`)
+    expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('Сегодня')
+    expect(screen.getByRole('link', { name: 'Добавить еду' })).toHaveAttribute('href', `/add?day=${todayKey()}`)
+  })
+
+  const swipe = (dx: number, dy: number) => {
+    const el = document.querySelector('.today')!
+    fireEvent.touchStart(el, { touches: [{ clientX: 200, clientY: 300 }] })
+    fireEvent.touchEnd(el, { changedTouches: [{ clientX: 200 + dx, clientY: 300 + dy }] })
+  }
+
+  it('horizontal swipe changes the day (left = next, right = previous)', () => {
+    seed(withNorm)
+    view()
+    swipe(-120, 5)
+    expect(screen.getByTestId('loc')).toHaveTextContent(`/?day=${addDays(todayKey(), 1)}`)
+    swipe(120, 5)
+    expect(screen.getByTestId('loc')).toHaveTextContent(`/?day=${todayKey()}`)
+  })
+
+  it('mostly vertical or short swipes are ignored', () => {
+    seed(withNorm)
+    view()
+    swipe(-100, 150)
+    swipe(-30, 0)
+    expect(screen.getByTestId('loc').textContent).toBe('/')
+    expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('Сегодня')
+  })
+
+  it('Weight nav item appears only with trackWeight', () => {
+    const profile = { sex: 'male', age: 30, heightCm: 180, weightKg: 80, activity: 'moderate', goal: 'keep', updatedAt: '' } as const
+    seed({ profile: { ...profile, trackWeight: false } })
+    const first = view()
+    expect(screen.queryByRole('link', { name: 'Вес' })).toBeNull()
+    first.unmount()
+    seed({ profile: { ...profile, trackWeight: true } })
+    view()
+    expect(screen.getByRole('link', { name: 'Вес' })).toBeInTheDocument()
   })
 
   it('deleting an entry shows a toast; "Отменить" restores it', () => {
