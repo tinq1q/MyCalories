@@ -102,7 +102,7 @@ describe('Profile', () => {
     view()
     fireEvent.click(screen.getByRole('button', { name: 'Скачать дневник' }))
     await waitFor(() => expect(stored().lastExportAt).not.toBeNull())
-    expect(names[0]).toMatch(/^SiteFood-дневник-\d{4}-\d{2}-\d{2}\.xlsx$/)
+    expect(names[0]).toMatch(/^MyCalories-дневник-\d{4}-\d{2}-\d{2}\.xlsx$/)
     expect(mocks.exportDiary.mock.calls[0][0]).not.toHaveProperty('lastExportAt')
   })
 

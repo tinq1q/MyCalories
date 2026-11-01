@@ -41,7 +41,7 @@ jobs:
           API_URL: ${{ vars.API_URL }}
         run: |
           if [ -z "$API_URL" ]; then
-            echo "::error::Repository variable API_URL is empty. Set it in Settings > Secrets and variables > Actions > Variables (e.g. https://sitefood-api.onrender.com)."
+            echo "::error::Repository variable API_URL is empty. Set it in Settings > Secrets and variables > Actions > Variables (e.g. https://mycalories-api.onrender.com)."
             exit 1
           fi
       - run: npm run build

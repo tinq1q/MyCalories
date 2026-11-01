@@ -130,7 +130,7 @@ async def test_sends_user_agent(monkeypatch):
     calls = []
     http = httpx.AsyncClient(transport=httpx.MockTransport(ok_handler(calls)))
     await OffClient(http).search("греч")
-    assert DEFAULT_USER_AGENT == "SiteFood/0.1 (personal food diary project)"
+    assert DEFAULT_USER_AGENT == "MyCalories/0.1 (personal food diary project)"
     assert calls[0].headers["user-agent"] == DEFAULT_USER_AGENT
 
     monkeypatch.setenv("OFF_USER_AGENT", "Custom/1.0")

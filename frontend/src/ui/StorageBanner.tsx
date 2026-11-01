@@ -16,7 +16,7 @@ export default function StorageBanner() {
           <button
             type="button"
             className="chip"
-            onClick={() => downloadBlob(new Blob([corruptRaw], { type: 'text/plain' }), 'SiteFood-повреждённые-данные.txt')}
+            onClick={() => downloadBlob(new Blob([corruptRaw], { type: 'text/plain' }), 'MyCalories-повреждённые-данные.txt')}
           >
             Скачать повреждённые данные
           </button>

@@ -21,7 +21,7 @@ async def lifespan(application: FastAPI):
 
 def create_app() -> FastAPI:
     """App factory. ALLOWED_ORIGINS is read here (not at import time) so tests can change it."""
-    application = FastAPI(title="SiteFood API", lifespan=lifespan)
+    application = FastAPI(title="My Calories API", lifespan=lifespan)
 
     raw = os.environ.get("ALLOWED_ORIGINS", DEFAULT_ORIGINS)
     origins = [o.strip() for o in raw.split(",") if o.strip()]

@@ -25,9 +25,9 @@ def _error(message: str) -> JSONResponse:
 @router.post("/export")
 def export_diary(data: ExportData) -> Response:
     # Non-ASCII file names need RFC 5987 (filename*), plus an ASCII fallback.
-    name = f"SiteFood-дневник-{date.today().isoformat()}.xlsx"
+    name = f"MyCalories-дневник-{date.today().isoformat()}.xlsx"
     disposition = (
-        f'attachment; filename="SiteFood-diary.xlsx"; filename*=UTF-8\'\'{quote(name)}'
+        f'attachment; filename="MyCalories-diary.xlsx"; filename*=UTF-8\'\'{quote(name)}'
     )
     return Response(
         content=build_workbook(data),

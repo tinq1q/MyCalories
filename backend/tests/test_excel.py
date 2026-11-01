@@ -326,7 +326,7 @@ def test_zip_bomb_rejected_before_openpyxl(monkeypatch):
 
 
 def test_uncompressed_limit_counts_all_entries(monkeypatch, sample_export):
-    # A normal SiteFood file is well over 1 KB unpacked.
+    # A normal My Calories file is well over 1 KB unpacked.
     monkeypatch.setattr(excel_mod, "MAX_UNCOMPRESSED_BYTES", 1024)
     with pytest.raises(UnsupportedFile):
         parse_workbook(build_workbook(sample_export))

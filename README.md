@@ -1,4 +1,4 @@
-# SiteFood — дневник питания
+# My Calories — дневник питания
 
 Личный сайт для учёта еды: что съел, сколько калорий, белков, жиров и углеводов, история, вес и экспорт в Excel.
 Интерфейс на русском. Всё бесплатно: фронтенд на GitHub Pages, бэкенд на бесплатном тарифе Render.
@@ -68,7 +68,7 @@ cd frontend && npm test               # фронтенд (vitest)
 | Где | Переменная | Зачем |
 | --- | --- | --- |
 | backend | `ALLOWED_ORIGINS` | адреса сайтов, которым разрешён CORS, через запятую. По умолчанию `http://localhost:5173` |
-| backend | `OFF_USER_AGENT` | необязательно: User-Agent для запросов к Open Food Facts. По умолчанию `SiteFood/0.1 (personal food diary project)` |
+| backend | `OFF_USER_AGENT` | необязательно: User-Agent для запросов к Open Food Facts. По умолчанию `MyCalories/0.1 (personal food diary project)` |
 | frontend | `VITE_API_URL` | адрес бэкенда (на сборке) |
 | frontend | `VITE_BASE` | базовый путь сайта, для Pages это `/<имя-репозитория>/` (CI задаёт сам) |
 
@@ -76,7 +76,7 @@ cd frontend && npm test               # фронтенд (vitest)
 
 1. **Репозиторий.** Создай репозиторий на GitHub и запушь ветку `main`.
 2. **Бэкенд на Render.** Создай сервис из `render.yaml` (New → Blueprint). В настройках задай
-   `ALLOWED_ORIGINS=https://<логин>.github.io` (только origin, без пути и без `/` в конце). Скопируй адрес сервиса, например `https://sitefood-api.onrender.com`.
+   `ALLOWED_ORIGINS=https://<логин>.github.io` (только origin, без пути и без `/` в конце). Скопируй адрес сервиса, например `https://mycalories-api.onrender.com`.
 3. **Переменная API_URL.** В репозитории: Settings → Secrets and variables → Actions → Variables →
    новая переменная `API_URL` = адрес сервиса на Render.
 4. **GitHub Pages.** Settings → Pages → Source: **GitHub Actions**.

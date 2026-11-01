@@ -8,7 +8,7 @@ from fastapi import Request
 from app.schemas import Product
 
 OFF_SEARCH_URL = "https://search.openfoodfacts.org/search"
-DEFAULT_USER_AGENT = "SiteFood/0.1 (personal food diary project)"
+DEFAULT_USER_AGENT = "MyCalories/0.1 (personal food diary project)"
 OFF_TIMEOUT_SECONDS = 8.0
 PAGE_SIZE = 20
 

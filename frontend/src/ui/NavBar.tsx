@@ -26,7 +26,7 @@ export default function NavBar() {
   ]
   return (
     <nav className="nav glass" aria-label="Основное меню">
-      <span className="nav-brand">SiteFood</span>
+      <span className="nav-brand">My Calories</span>
       {items.map((i) => (
         <NavLink key={i.to} to={i.to} end={i.end} className="nav-item">
           {i.icon}

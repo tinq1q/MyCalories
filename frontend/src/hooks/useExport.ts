@@ -38,7 +38,7 @@ export function useExport() {
     setBusy(true)
     try {
       const blob = await api.exportDiary(data)
-      downloadBlob(blob, `SiteFood-дневник-${todayKey()}.xlsx`)
+      downloadBlob(blob, `MyCalories-дневник-${todayKey()}.xlsx`)
       markExported()
     } catch {
       toast.show('Не удалось связаться с сервером, попробуйте ещё раз')

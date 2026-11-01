@@ -59,7 +59,7 @@ SOURCES = ("base", "off", "custom")
 
 
 class UnsupportedFile(Exception):
-    """The file is not a SiteFood workbook we can read at all (message is Russian)."""
+    """The file is not a My Calories workbook we can read at all (message is Russian)."""
 
 
 class RowError(Exception):
@@ -240,7 +240,7 @@ def _sheet_ok(wb, sheet: str, headers: list[str], errors: list[ImportError_],
     if actual != headers:
         errors.append(ImportError_(
             sheet=sheet, row=1,
-            message=f"Заголовки листа «{sheet}» не совпадают с форматом SiteFood. Лист пропущен."))
+            message=f"Заголовки листа «{sheet}» не совпадают с форматом My Calories. Лист пропущен."))
         return False
     return True
 
@@ -384,7 +384,7 @@ def _parse_profile(wb, errors: list[ImportError_]) -> Profile | None:
 
 def _check_version(wb) -> None:
     if SHEET_INFO not in wb.sheetnames:
-        raise UnsupportedFile("Это не файл SiteFood: нет листа «Инфо».")
+        raise UnsupportedFile("Это не файл My Calories: нет листа «Инфо».")
     raw = wb[SHEET_INFO]["B1"].value
     # Only a whole number counts: int, float equal to an integer, or a digit string.
     version = None
@@ -400,13 +400,13 @@ def _check_version(wb) -> None:
         raise UnsupportedFile("Не удалось определить версию формата файла.")
     if version > FORMAT_VERSION:
         raise UnsupportedFile(
-            f"Файл создан более новой версией SiteFood (формат {version}). Обновите приложение."
+            f"Файл создан более новой версией My Calories (формат {version}). Обновите приложение."
         )
     if version != FORMAT_VERSION:
         raise UnsupportedFile(f"Неподдерживаемая версия формата файла: {version}.")
 
 
-UNREADABLE = "Не удалось прочитать файл. Нужен файл .xlsx, созданный SiteFood."
+UNREADABLE = "Не удалось прочитать файл. Нужен файл .xlsx, созданный My Calories."
 
 
 def _check_unpacked_size(content: bytes) -> None:
