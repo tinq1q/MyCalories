@@ -1,5 +1,6 @@
+import { m } from 'motion/react'
 import { useId } from 'react'
-import { fmt } from './format'
+import { AnimatedNumber, FILL, useReducedMotionSafe } from './motion'
 
 const R = 40
 const C = 2 * Math.PI * R
@@ -13,10 +14,12 @@ interface RingProps {
 
 export default function Ring({ value, max, size = 104 }: RingProps) {
   const gid = useId()
+  const reduced = useReducedMotionSafe()
   if (max === null || max <= 0) {
-    return <span className="ring-number">{fmt(value)}</span>
+    return <span className="ring-number"><AnimatedNumber value={value} /></span>
   }
   const ratio = Math.min(Math.max(value / max, 0), 1)
+  const offset = C * (1 - ratio)
   return (
     <div className="ring" style={{ width: size, height: size }}>
       <svg viewBox="0 0 100 100" width={size} height={size} aria-hidden="true">
@@ -27,7 +30,8 @@ export default function Ring({ value, max, size = 104 }: RingProps) {
           </linearGradient>
         </defs>
         <circle cx="50" cy="50" r={R} fill="none" stroke="var(--ring-track)" strokeWidth="11" />
-        <circle
+        {/* The arc grows from empty on first show and glides on every change. */}
+        <m.circle
           className="ring-arc"
           cx="50"
           cy="50"
@@ -37,11 +41,13 @@ export default function Ring({ value, max, size = 104 }: RingProps) {
           strokeWidth="11"
           strokeLinecap="round"
           strokeDasharray={C}
-          strokeDashoffset={C * (1 - ratio)}
+          initial={reduced ? false : { strokeDashoffset: C }}
+          animate={{ strokeDashoffset: offset }}
+          transition={reduced ? { duration: 0 } : FILL}
           transform="rotate(-90 50 50)"
         />
       </svg>
-      <span className="ring-center">{fmt(value)}</span>
+      <span className="ring-center"><AnimatedNumber value={value} /></span>
     </div>
   )
 }

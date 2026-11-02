@@ -9,6 +9,8 @@
   --glass-blur: blur(22px) saturate(180%);
   --radius: 22px;
   --nav-h: 76px;
+  /* Overshoots a little, then settles: the CSS twin of SPRING in motion.tsx. */
+  --spring-ease: cubic-bezier(0.34, 1.56, 0.64, 1);
   --chart-axis: var(--text-muted);
 }
 
@@ -363,8 +365,21 @@ ul {
   text-decoration: none;
 }
 
+.nav-item {
+  position: relative;
+  isolation: isolate;
+}
+
 .nav-item.active {
   color: var(--nav-active-fg);
+}
+
+/* Active tab highlight; NavBar slides it between tabs. */
+.nav-pill {
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  border-radius: inherit;
   background: var(--nav-active-bg);
 }
 
@@ -478,10 +493,6 @@ ul {
   font-weight: 700;
 }
 
-.ring-arc {
-  transition: stroke-dashoffset 0.6s ease;
-}
-
 .kcal {
   display: flex;
   flex-direction: column;
@@ -530,7 +541,6 @@ ul {
   display: block;
   height: 100%;
   border-radius: 3px;
-  transition: width 0.6s ease;
 }
 
 .meal {
@@ -760,6 +770,26 @@ a:focus-visible {
   outline-offset: 2px;
 }
 
+/* ---------- press feedback ---------- */
+.btn,
+.icon-btn,
+.fab,
+button.glass,
+a.glass,
+.nav-item {
+  transition: transform 0.4s var(--spring-ease);
+}
+
+.btn:active:not(:disabled),
+.icon-btn:active,
+.fab:active,
+button.glass:active,
+a.glass:active,
+.nav-item:active {
+  transform: scale(0.95);
+  transition-duration: 0.1s;
+}
+
 /* Also freezes the flowing theme background (body::before). */
 @media (prefers-reduced-motion: reduce) {
   *,
@@ -767,6 +797,26 @@ a:focus-visible {
   *::after {
     transition: none !important;
     animation: none !important;
+  }
+
+  /* No spring: a press only dims briefly. */
+  .btn,
+  .icon-btn,
+  .fab,
+  button.glass,
+  a.glass,
+  .nav-item {
+    transition: opacity 0.12s ease !important;
+  }
+
+  .btn:active:not(:disabled),
+  .icon-btn:active,
+  .fab:active,
+  button.glass:active,
+  a.glass:active,
+  .nav-item:active {
+    transform: none;
+    opacity: 0.7;
   }
 }
 
@@ -1180,6 +1230,11 @@ a:focus-visible {
   padding: 8px 0;
   border-top: 1px solid var(--divider);
   font-size: 14px;
+}
+
+/* Routed screen wrapper; ScreenTransition slides it in via top. */
+.screen {
+  position: relative;
 }
 
 /* Placeholder while a lazily loaded screen downloads. */

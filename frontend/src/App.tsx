@@ -8,6 +8,7 @@ import { isOnboardingSkipped } from './screens/onboardingFlag'
 import Profile from './screens/Profile'
 import Today from './screens/Today'
 import Glass from './ui/Glass'
+import { MotionProvider, ScreenTransition } from './ui/motion'
 import NavBar from './ui/NavBar'
 import StorageBanner from './ui/StorageBanner'
 import { ToastProvider } from './ui/Toast'
@@ -41,15 +42,17 @@ function Shell() {
       <main className="main">
         {/* Storage problems can mean lost data, so they are visible on every screen. */}
         <StorageBanner />
-        <Routes>
-          <Route path="/" element={<Today />} />
-          <Route path="/add" element={<AddFood />} />
-          <Route path="/history" element={<Lazy><History /></Lazy>} />
-          <Route path="/weight" element={<Lazy><Weight /></Lazy>} />
-          <Route path="/profile" element={<Profile />} />
-          <Route path="/onboarding" element={<Onboarding />} />
-          <Route path="*" element={<Today />} />
-        </Routes>
+        <ScreenTransition>
+          <Routes>
+            <Route path="/" element={<Today />} />
+            <Route path="/add" element={<AddFood />} />
+            <Route path="/history" element={<Lazy><History /></Lazy>} />
+            <Route path="/weight" element={<Lazy><Weight /></Lazy>} />
+            <Route path="/profile" element={<Profile />} />
+            <Route path="/onboarding" element={<Onboarding />} />
+            <Route path="*" element={<Today />} />
+          </Routes>
+        </ScreenTransition>
       </main>
     </div>
   )
@@ -57,12 +60,14 @@ function Shell() {
 
 export default function App() {
   return (
-    <DiaryProvider>
-      <ToastProvider>
-        <HashRouter>
-          <Shell />
-        </HashRouter>
-      </ToastProvider>
-    </DiaryProvider>
+    <MotionProvider>
+      <DiaryProvider>
+        <ToastProvider>
+          <HashRouter>
+            <Shell />
+          </HashRouter>
+        </ToastProvider>
+      </DiaryProvider>
+    </MotionProvider>
   )
 }

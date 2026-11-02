@@ -1,6 +1,8 @@
+import { m } from 'motion/react'
 import { NavLink } from 'react-router-dom'
 import type { ReactNode } from 'react'
 import { useDiary } from '../storage/DiaryContext'
+import { SPRING, useReducedMotionSafe } from './motion'
 
 const icon = (d: ReactNode) => (
   <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
@@ -18,6 +20,7 @@ const ICONS = {
 // Bottom bar below 768px, side menu above (see theme.css).
 export default function NavBar() {
   const { state } = useDiary()
+  const reduced = useReducedMotionSafe()
   const items = [
     { to: '/', label: 'Сегодня', icon: ICONS.today, end: true },
     { to: '/history', label: 'История', icon: ICONS.history, end: false },
@@ -29,8 +32,22 @@ export default function NavBar() {
       <span className="nav-brand">My Calories</span>
       {items.map((i) => (
         <NavLink key={i.to} to={i.to} end={i.end} className="nav-item">
-          {i.icon}
-          <span>{i.label}</span>
+          {({ isActive }) => (
+            <>
+              {/* The highlight springs up under the newly chosen tab. */}
+              {isActive && (
+                <m.span
+                  className="nav-pill"
+                  initial={reduced ? false : { opacity: 0, scale: 0.8 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  transition={SPRING}
+                  aria-hidden="true"
+                />
+              )}
+              {i.icon}
+              <span>{i.label}</span>
+            </>
+          )}
         </NavLink>
       ))}
     </nav>
