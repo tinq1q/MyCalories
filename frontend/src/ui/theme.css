@@ -1407,3 +1407,34 @@ a.glass:active,
 .swatch-sunset { background: linear-gradient(135deg, #ff5f6d, #ffc371, #ff4e9b); }
 .swatch-ocean { background: linear-gradient(135deg, #00c6ff, #0072ff, #00e5c3); }
 .swatch-night { background: radial-gradient(120% 90% at 50% 0%, #2a1f5c, #0a0a10); }
+
+/* ---------- weekly weight prompt ---------- */
+.weight-prompt {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 14px 18px 18px;
+}
+
+/* Drag handle: pulling it down snoozes the card. */
+.weight-prompt-head {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  touch-action: none;
+  cursor: grab;
+}
+
+.weight-prompt-head h2 {
+  align-self: flex-start;
+  font-size: 17px;
+}
+
+.weight-prompt-grip {
+  width: 40px;
+  height: 4px;
+  border-radius: 2px;
+  background: var(--text-muted);
+  opacity: 0.5;
+}

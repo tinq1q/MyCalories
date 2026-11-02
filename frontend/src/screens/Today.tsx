@@ -3,6 +3,7 @@ import { Link, useSearchParams } from 'react-router-dom'
 import { addDays, isValidDayKey, todayKey } from '../domain/dates'
 import { dayTotals, mealTotals, nutrientsFor } from '../domain/nutrition'
 import { normForDate } from '../domain/norm'
+import { shouldPromptWeight, WEIGHT_PROMPT_SNOOZE_KEY } from '../domain/weightPrompt'
 import { MEALS, MEAL_LABELS } from '../domain/types'
 import type { Entry } from '../domain/types'
 import { useDiary } from '../storage/DiaryContext'
@@ -13,6 +14,7 @@ import Ring from '../ui/Ring'
 import { fmt } from '../ui/format'
 import { useToast } from '../ui/Toast'
 import EntrySheet from './EntrySheet'
+import WeightPrompt from './WeightPrompt'
 
 const localDate = (key: string) => {
   const [y, m, d] = key.split('-').map(Number)
@@ -26,6 +28,14 @@ function dayTitle(day: string, today: string): { title: string; sub: string } {
   if (day === today) return { title: 'Сегодня', sub: dateFmt.format(date) }
   if (day === addDays(today, -1)) return { title: 'Вчера', sub: dateFmt.format(date) }
   return { title: dateFmt.format(date), sub: weekdayFmt.format(date) }
+}
+
+function readSnooze(): string | null {
+  try {
+    return localStorage.getItem(WEIGHT_PROMPT_SNOOZE_KEY)
+  } catch {
+    return null
+  }
 }
 
 export default function Today() {
@@ -52,6 +62,8 @@ export default function Today() {
     return () => window.clearTimeout(t)
   }, [newId, setParams])
   const [editing, setEditing] = useState<Entry | null>(null)
+  const [promptDone, setPromptDone] = useState(false)
+  const [snoozedUntil] = useState(readSnooze)
   const touchStart = useRef<{ x: number; y: number } | null>(null)
 
   const go = (n: number) => setParams({ day: addDays(day, n) }, { replace: true })
@@ -97,6 +109,8 @@ export default function Today() {
           ›
         </button>
       </header>
+
+      {day === today && !promptDone && shouldPromptWeight(state, today, snoozedUntil) && <WeightPrompt onDone={() => setPromptDone(true)} />}
 
       <Glass as="section" className="summary" aria-label="Итоги дня">
         <div className="ring-row">

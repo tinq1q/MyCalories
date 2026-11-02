@@ -5,6 +5,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { addDays, todayKey } from '../domain/dates'
 import type { DiaryState, Entry, Meal, Product } from '../domain/types'
 import { emptyState, STORAGE_KEY } from '../storage/storage'
+import { WEIGHT_PROMPT_SNOOZE_KEY } from '../domain/weightPrompt'
 import { DiaryProvider } from '../storage/DiaryContext'
 import { ToastProvider } from '../ui/Toast'
 import NavBar from '../ui/NavBar'
@@ -156,6 +157,62 @@ describe('Today', () => {
     fireEvent.change(screen.getByLabelText('Граммы'), { target: { value: '500,5' } })
     fireEvent.click(screen.getByRole('button', { name: 'Сохранить' }))
     expect(screen.getAllByText(hasText('1 221')).length).toBeGreaterThan(0)
+  })
+
+  describe('weekly weight prompt', () => {
+    const profile = { sex: 'male', age: 30, heightCm: 180, weightKg: 80, activity: 'moderate', goal: 'keep', trackWeight: true, updatedAt: '2020-01-01T00:00:00.000Z' } as const
+    const stale = { profile, weights: [{ date: addDays(todayKey(), -8), weightKg: 90 }] }
+    const heading = 'Как твой вес на этой неделе?'
+
+    it('shows with an 8-day-old weight, prefilled with the latest weight', () => {
+      seed(stale)
+      view()
+      expect(screen.getByText(heading)).toBeInTheDocument()
+      expect(screen.getByLabelText('Вес, кг')).toHaveValue('90')
+    })
+
+    it('stays hidden for a recent weight and on other days', () => {
+      seed({ profile, weights: [{ date: addDays(todayKey(), -2), weightKg: 90 }] })
+      const first = view()
+      expect(screen.queryByText(heading)).toBeNull()
+      first.unmount()
+      seed(stale)
+      view(`/?day=${addDays(todayKey(), -1)}`)
+      expect(screen.queryByText(heading)).toBeNull()
+    })
+
+    it('"Напомнить позже" hides it and stores today + 3 days', () => {
+      seed(stale)
+      view()
+      fireEvent.click(screen.getByRole('button', { name: 'Напомнить позже' }))
+      expect(screen.queryByText(heading)).toBeNull()
+      expect(localStorage.getItem(WEIGHT_PROMPT_SNOOZE_KEY)).toBe(addDays(todayKey(), 3))
+    })
+
+    it('"Сохранить" with 91,5 adds that weight for today and shows a toast', () => {
+      seed(stale)
+      view()
+      fireEvent.change(screen.getByLabelText('Вес, кг'), { target: { value: '91,5' } })
+      fireEvent.click(screen.getByRole('button', { name: 'Сохранить' }))
+      expect(screen.queryByText(heading)).toBeNull()
+      expect(screen.getByText('Вес сохранён')).toBeInTheDocument()
+      const saved = JSON.parse(localStorage.getItem(STORAGE_KEY)!)
+      expect(saved.weights).toContainEqual({ date: todayKey(), weightKg: 91.5 })
+    })
+
+    it('cannot save an invalid weight', () => {
+      seed(stale)
+      view()
+      fireEvent.change(screen.getByLabelText('Вес, кг'), { target: { value: '5' } })
+      expect(screen.getByRole('button', { name: 'Сохранить' })).toBeDisabled()
+    })
+
+    it('stays hidden while snoozed', () => {
+      seed(stale)
+      localStorage.setItem(WEIGHT_PROMPT_SNOOZE_KEY, addDays(todayKey(), 1))
+      view()
+      expect(screen.queryByText(heading)).toBeNull()
+    })
   })
 
   describe('new entry highlight', () => {
