@@ -1,5 +1,5 @@
 import { LazyMotion, m, useReducedMotion } from 'motion/react'
-import type { HTMLMotionProps, Transition } from 'motion/react'
+import type { Transition } from 'motion/react'
 import { useEffect, useRef, useState } from 'react'
 import type { ReactNode } from 'react'
 import { useLocation } from 'react-router-dom'
@@ -31,16 +31,6 @@ export function useReducedMotionSafe(): boolean {
   const reduced = useReducedMotion()
   if (typeof window === 'undefined' || typeof window.matchMedia !== 'function') return true
   return reduced === true
-}
-
-type PressableTag = 'button' | 'a' | 'div'
-type PressableProps = HTMLMotionProps<'button'> & { as?: PressableTag }
-
-// Shrinks slightly while pressed and springs back on release.
-export function Pressable({ as = 'button', ...rest }: PressableProps) {
-  const reduced = useReducedMotionSafe()
-  const Tag = m[as] as typeof m.button
-  return <Tag whileTap={reduced ? undefined : { scale: 0.95 }} transition={SPRING} {...rest} />
 }
 
 // Whole numbers count in whole steps, fractional ones in tenths (like fmt).
