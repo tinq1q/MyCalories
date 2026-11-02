@@ -1,7 +1,7 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useReducer, useRef, useState } from 'react'
 import type { ReactNode } from 'react'
 import { todayKey } from '../domain/dates'
-import type { DiaryState, Entry, ExportData, Norm, Product, Profile, WeightRecord } from '../domain/types'
+import type { DiaryState, Entry, ExportData, Norm, Product, Profile, ThemeId, WeightRecord } from '../domain/types'
 import { diaryReducer } from './diaryReducer'
 import { STORAGE_KEY, loadState, parseStoredState, saveState } from './storage'
 import type { LoadWarning } from './storage'
@@ -23,6 +23,7 @@ export interface DiaryApi {
   setProfile(p: Profile): void
   setManualNorm(n: Norm | null): void
   addWeight(w: WeightRecord): void
+  setTheme(t: ThemeId): void
   applyImport(data: ExportData, mode: 'merge' | 'replace'): void
   markExported(): void
 }
@@ -101,6 +102,7 @@ export function DiaryProvider({ children }: { children: ReactNode }) {
         dispatch({ type: 'setProfile', profile, today: todayKey(), now: new Date().toISOString() }),
       setManualNorm: (norm) => dispatch({ type: 'setManualNorm', norm, today: todayKey(), now: new Date().toISOString() }),
       addWeight: (weight) => dispatch({ type: 'addWeight', weight, now: new Date().toISOString() }),
+      setTheme: (theme) => dispatch({ type: 'setTheme', theme }),
       applyImport: (data, mode) => dispatch({ type: 'import', data, mode }),
       markExported: () => dispatch({ type: 'markExported', now: new Date().toISOString() }),
     }),

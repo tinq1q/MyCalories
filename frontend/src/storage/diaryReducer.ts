@@ -1,6 +1,6 @@
 import { mergeDiary, replaceDiary } from '../domain/merge'
 import { calcNorm } from '../domain/norm'
-import type { DiaryState, Entry, ExportData, Norm, NormRecord, Product, Profile, WeightRecord } from '../domain/types'
+import type { DiaryState, Entry, ExportData, Norm, NormRecord, Product, Profile, ThemeId, WeightRecord } from '../domain/types'
 
 export const MAX_RECENT = 20
 
@@ -14,6 +14,8 @@ export type DiaryAction =
   | { type: 'setProfile'; profile: Profile; today: string; now: string }
   | { type: 'setManualNorm'; norm: Norm | null; today: string; now: string }
   | { type: 'addWeight'; weight: WeightRecord; now: string }
+  // Not a profile change: updatedAt is deliberately left alone.
+  | { type: 'setTheme'; theme: ThemeId }
   | { type: 'import'; data: ExportData; mode: 'merge' | 'replace' }
   | { type: 'markExported'; now: string }
   // Replace the whole state with what another browser tab saved.
@@ -86,6 +88,8 @@ export function diaryReducer(state: DiaryState, action: DiaryAction): DiaryState
       const normHistory = upsertNorm(state.normHistory, { effectiveFrom, ...calcNorm(profile), manual: false })
       return { ...state, weights, profile, normHistory }
     }
+    case 'setTheme':
+      return { ...state, theme: action.theme }
     case 'import':
       return action.mode === 'merge' ? mergeDiary(state, action.data) : replaceDiary(state, action.data)
     case 'markExported':

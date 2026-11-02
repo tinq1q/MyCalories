@@ -84,3 +84,27 @@ describe('replaceDiary', () => {
     expect(r.lastExportAt).toBe('x')
   })
 })
+
+describe('theme and target weight on import', () => {
+  it('merge keeps the current theme', () => {
+    const m = mergeDiary({ ...emptyState(), theme: 'ocean' }, incoming({ theme: 'sunset' }))
+    expect(m.theme).toBe('ocean')
+  })
+
+  it('replace takes a valid incoming theme', () => {
+    expect(replaceDiary({ ...emptyState(), theme: 'ocean' }, incoming({ theme: 'sunset' })).theme).toBe('sunset')
+  })
+
+  it('replace keeps the current theme when the file has none or an invalid one', () => {
+    const cur = { ...emptyState(), theme: 'ocean' as const }
+    expect(replaceDiary(cur, incoming({})).theme).toBe('ocean')
+    expect(replaceDiary(cur, incoming({ theme: null })).theme).toBe('ocean')
+    expect(replaceDiary(cur, incoming({ theme: 'pink' as never })).theme).toBe('ocean')
+  })
+
+  it('a newer incoming profile with targetWeightKg wins whole', () => {
+    const cur = { ...emptyState(), profile: profile('2026-10-01T00:00:00Z') }
+    const inc = { ...profile('2026-10-02T00:00:00Z'), targetWeightKg: 70 }
+    expect(mergeDiary(cur, incoming({ profile: inc })).profile).toEqual(inc)
+  })
+})

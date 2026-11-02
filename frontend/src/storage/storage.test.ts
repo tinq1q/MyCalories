@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { STORAGE_KEY, emptyState, loadState, saveState } from './storage'
+import { STORAGE_KEY, coerceTheme, emptyState, loadState, parseStoredState, saveState } from './storage'
 
 beforeEach(() => {
   vi.restoreAllMocks()
@@ -92,5 +92,30 @@ describe('loadState shape coercion', () => {
   it('a core list that is not an array still counts as corrupt (backed up, user warned)', () => {
     localStorage.setItem(STORAGE_KEY, JSON.stringify({ ...emptyState(), weights: {} }))
     expect(loadState().warning).toBe('corrupt')
+  })
+})
+
+describe('theme in stored state', () => {
+  const v1 = { formatVersion: 1, profile: null, normHistory: [], entries: [], customProducts: [], weights: [] }
+
+  it('defaults to citrus for a v1 save without theme, entries intact', () => {
+    const entries = [{ id: 'e1', date: '2026-10-01', meal: 'lunch', grams: 100, product: { id: 'p' } }]
+    const s = parseStoredState(JSON.stringify({ ...v1, entries }))
+    expect(s?.theme).toBe('citrus')
+    expect(s?.entries).toEqual(entries)
+  })
+
+  it('keeps a valid stored theme', () => {
+    expect(parseStoredState(JSON.stringify({ ...v1, theme: 'ocean' }))?.theme).toBe('ocean')
+  })
+
+  it('falls back to citrus for an unknown theme', () => {
+    expect(parseStoredState(JSON.stringify({ ...v1, theme: 'pink' }))?.theme).toBe('citrus')
+  })
+
+  it('emptyState and coerceTheme default to citrus', () => {
+    expect(emptyState().theme).toBe('citrus')
+    expect(coerceTheme(42)).toBe('citrus')
+    expect(coerceTheme('night')).toBe('night')
   })
 })

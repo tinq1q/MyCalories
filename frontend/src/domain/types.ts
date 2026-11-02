@@ -12,6 +12,18 @@ export const MEAL_LABELS: Record<Meal, string> = {
   dinner: 'Ужин',
 }
 
+export type ThemeId = 'citrus' | 'sunset' | 'ocean' | 'night'
+
+// Display order of the theme picker.
+export const THEMES: ThemeId[] = ['citrus', 'sunset', 'ocean', 'night']
+
+export const THEME_LABELS: Record<ThemeId, string> = {
+  citrus: 'Цитрус',
+  sunset: 'Закат',
+  ocean: 'Океан',
+  night: 'Ночь',
+}
+
 export type Sex = 'male' | 'female'
 export type Activity = 'sedentary' | 'light' | 'moderate' | 'high' | 'extreme'
 export type Goal = 'lose' | 'keep' | 'gain'
@@ -44,6 +56,7 @@ export interface Profile {
   activity: Activity
   goal: Goal
   trackWeight: boolean
+  targetWeightKg?: number | null
   updatedAt: string
 }
 
@@ -71,9 +84,11 @@ export interface ExportData {
   entries: Entry[]
   customProducts: Product[]
   weights: WeightRecord[]
+  theme?: ThemeId | null
 }
 
 export type DiaryState = ExportData & {
+  theme: ThemeId
   recentProducts: Product[]
   lastExportAt: string | null
 }

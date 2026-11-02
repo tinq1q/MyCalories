@@ -34,6 +34,7 @@ export function useExport() {
       entries: state.entries,
       customProducts: state.customProducts,
       weights: state.weights,
+      theme: state.theme,
     }
     setBusy(true)
     try {

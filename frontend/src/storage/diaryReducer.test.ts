@@ -26,3 +26,13 @@ describe('diaryReducer addWeight', () => {
     expect(normForDate(s.normHistory, '2026-11-05')).toEqual(calcNorm({ ...male, weightKg: 85 }))
   })
 })
+
+describe('diaryReducer setTheme', () => {
+  it('changes only the theme and does not stamp the profile', () => {
+    const s0 = diaryReducer(emptyState(), { type: 'setProfile', profile: male, today: '2026-11-01', now })
+    const s1 = diaryReducer(s0, { type: 'setTheme', theme: 'ocean' })
+    expect(s1.theme).toBe('ocean')
+    expect(s1.profile?.updatedAt).toBe(now)
+    expect({ ...s1, theme: s0.theme }).toEqual(s0)
+  })
+})

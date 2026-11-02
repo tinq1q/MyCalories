@@ -1,4 +1,5 @@
-import type { DiaryState } from '../domain/types'
+import { THEMES } from '../domain/types'
+import type { DiaryState, ThemeId } from '../domain/types'
 
 export const STORAGE_KEY = 'sitefood:v1'
 export const CORRUPT_BACKUP_KEY = 'sitefood:corrupt-backup'
@@ -13,9 +14,15 @@ export function emptyState(): DiaryState {
     entries: [],
     customProducts: [],
     weights: [],
+    theme: 'citrus',
     recentProducts: [],
     lastExportAt: null,
   }
+}
+
+// Any unknown value (older save, hand edit) becomes the default theme.
+export function coerceTheme(v: unknown): ThemeId {
+  return THEMES.includes(v as ThemeId) ? (v as ThemeId) : 'citrus'
 }
 
 function isObject(v: unknown): v is Record<string, unknown> {
@@ -52,6 +59,7 @@ function coerceShape(v: Record<string, unknown>): DiaryState {
   for (const k of LIST_FIELDS) if (!Array.isArray(s[k])) s[k] = []
   if (typeof s.lastExportAt !== 'string') s.lastExportAt = null
   if (!isObject(s.profile)) s.profile = null
+  s.theme = coerceTheme(s.theme)
   return s as unknown as DiaryState
 }
 

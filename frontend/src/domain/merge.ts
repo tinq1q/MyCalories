@@ -1,3 +1,4 @@
+import { THEMES } from './types'
 import type { DiaryState, ExportData, NormRecord } from './types'
 
 function unionById<T extends { id: string }>(current: T[], incoming: T[]): T[] {
@@ -46,6 +47,8 @@ export function replaceDiary(current: DiaryState, incoming: ExportData): DiarySt
     entries: incoming.entries,
     customProducts: incoming.customProducts,
     weights: incoming.weights,
+    // A file without a (valid) theme leaves the current look alone.
+    theme: incoming.theme && THEMES.includes(incoming.theme) ? incoming.theme : current.theme,
     recentProducts: current.recentProducts,
     lastExportAt: current.lastExportAt,
   }
