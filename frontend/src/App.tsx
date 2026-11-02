@@ -11,6 +11,7 @@ import Glass from './ui/Glass'
 import NavBar from './ui/NavBar'
 import StorageBanner from './ui/StorageBanner'
 import { ToastProvider } from './ui/Toast'
+import { useApplyTheme } from './ui/useApplyTheme'
 
 // History and Weight pull in recharts (the biggest dependency), so they are
 // split into their own chunks and downloaded only when the screen is opened.
@@ -29,6 +30,7 @@ function Lazy({ children }: { children: ReactNode }) {
 function Shell() {
   const { pathname } = useLocation()
   const { state, warning } = useDiary()
+  useApplyTheme(state.theme)
   // First visit: no profile, nothing recorded and the questionnaire was not skipped.
   if (pathname !== '/onboarding' && !state.profile && state.entries.length === 0 && !warning && !isOnboardingSkipped()) {
     return <Navigate to="/onboarding" replace />

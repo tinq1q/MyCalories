@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { useExport } from '../hooks/useExport'
 import { useDiary } from '../storage/DiaryContext'
 import Glass from '../ui/Glass'
+import ThemePicker from '../ui/ThemePicker'
 import { useToast } from '../ui/Toast'
 import ImportPanel from './ImportPanel'
 import NormCard from './NormCard'
@@ -49,6 +50,8 @@ export default function Profile() {
       <QuestionnaireCard key={state.profile?.updatedAt ?? 'none'} />
 
       <NormCard />
+
+      <ThemePicker />
 
       <Glass as="section" className="card-stack">
         <h2>Резервная копия</h2>

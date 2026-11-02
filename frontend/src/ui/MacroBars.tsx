@@ -2,9 +2,9 @@ import type { Norm } from '../domain/types'
 import { fmt } from './format'
 
 const ITEMS = [
-  { key: 'protein', label: 'Белки', color: '#5ac8fa' },
-  { key: 'fat', label: 'Жиры', color: '#ffd60a' },
-  { key: 'carbs', label: 'Углеводы', color: '#30d158' },
+  { key: 'protein', label: 'Белки', color: 'var(--protein)' },
+  { key: 'fat', label: 'Жиры', color: 'var(--fat)' },
+  { key: 'carbs', label: 'Углеводы', color: 'var(--carbs)' },
 ] as const
 
 export default function MacroBars({ totals, norm }: { totals: Norm; norm: Norm | null }) {

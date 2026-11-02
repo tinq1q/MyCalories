@@ -22,11 +22,11 @@ export default function Ring({ value, max, size = 104 }: RingProps) {
       <svg viewBox="0 0 100 100" width={size} height={size} aria-hidden="true">
         <defs>
           <linearGradient id={gid} x1="0" y1="0" x2="1" y2="1">
-            <stop offset="0" stopColor="#00e5c3" />
-            <stop offset="1" stopColor="#7b5cff" />
+            <stop offset="0" stopColor="var(--ring-from)" />
+            <stop offset="1" stopColor="var(--ring-to)" />
           </linearGradient>
         </defs>
-        <circle cx="50" cy="50" r={R} fill="none" stroke="rgba(255,255,255,.1)" strokeWidth="11" />
+        <circle cx="50" cy="50" r={R} fill="none" stroke="var(--ring-track)" strokeWidth="11" />
         <circle
           className="ring-arc"
           cx="50"

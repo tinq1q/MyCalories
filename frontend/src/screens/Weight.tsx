@@ -10,7 +10,8 @@ import Glass from '../ui/Glass'
 import { useToast } from '../ui/Toast'
 
 const ruDate = (key: string) => `${key.slice(8)}.${key.slice(5, 7)}.${key.slice(0, 4)}`
-const tick = { fill: 'rgba(242,242,247,0.62)', fontSize: 11 }
+// Colours come from the active theme (theme.css variables).
+const tick = { fill: 'var(--chart-axis)', fontSize: 11 }
 
 export default function Weight() {
   const { state, addWeight } = useDiary()
@@ -77,14 +78,14 @@ export default function Weight() {
           <div className="chart-box" data-testid="weight-chart">
             <ResponsiveContainer width="100%" height={200}>
               <LineChart data={points} margin={{ top: 8, right: 8, left: -18, bottom: 0 }}>
-                <CartesianGrid stroke="rgba(255,255,255,0.08)" vertical={false} />
+                <CartesianGrid stroke="var(--chart-grid)" vertical={false} />
                 <XAxis dataKey="label" tick={tick} axisLine={false} tickLine={false} />
                 <YAxis domain={['dataMin - 1', 'dataMax + 1']} tick={tick} axisLine={false} tickLine={false} />
                 <Tooltip
-                  contentStyle={{ background: 'rgba(30,27,52,0.92)', border: '1px solid rgba(255,255,255,0.14)', borderRadius: 12 }}
+                  contentStyle={{ background: 'var(--tooltip-bg)', border: '1px solid var(--glass-border)', borderRadius: 12 }}
                   formatter={(v) => [`${v} кг`, 'Вес']}
                 />
-                <Line dataKey="kg" stroke="#00e5c3" strokeWidth={2.5} dot={{ r: 3, fill: '#7b5cff', stroke: 'none' }} isAnimationActive={false} />
+                <Line dataKey="kg" stroke="var(--chart-line)" strokeWidth={2.5} dot={{ r: 3, fill: 'var(--chart-dot)', stroke: 'none' }} isAnimationActive={false} />
               </LineChart>
             </ResponsiveContainer>
           </div>

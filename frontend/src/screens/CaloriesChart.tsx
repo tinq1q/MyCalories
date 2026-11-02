@@ -14,7 +14,8 @@ interface Props {
   onRangeChange(r: 7 | 30): void
 }
 
-const tick = { fill: 'rgba(242,242,247,0.62)', fontSize: 11 }
+// Colours come from the active theme (theme.css variables).
+const tick = { fill: 'var(--chart-axis)', fontSize: 11 }
 
 export default function CaloriesChart({ data, range, onRangeChange }: Props) {
   return (
@@ -40,20 +41,20 @@ export default function CaloriesChart({ data, range, onRangeChange }: Props) {
           <ComposedChart data={data} margin={{ top: 8, right: 4, left: -18, bottom: 0 }}>
             <defs>
               <linearGradient id="barGrad" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="0%" stopColor="#00e5c3" />
-                <stop offset="100%" stopColor="#7b5cff" />
+                <stop offset="0%" stopColor="var(--chart-bar-from)" />
+                <stop offset="100%" stopColor="var(--chart-bar-to)" />
               </linearGradient>
             </defs>
-            <CartesianGrid stroke="rgba(255,255,255,0.08)" vertical={false} />
+            <CartesianGrid stroke="var(--chart-grid)" vertical={false} />
             <XAxis dataKey="label" tick={tick} axisLine={false} tickLine={false} interval="preserveStartEnd" />
             <YAxis tick={tick} axisLine={false} tickLine={false} />
             <Tooltip
-              contentStyle={{ background: 'rgba(30,27,52,0.92)', border: '1px solid rgba(255,255,255,0.14)', borderRadius: 12 }}
+              contentStyle={{ background: 'var(--tooltip-bg)', border: '1px solid var(--glass-border)', borderRadius: 12 }}
               formatter={(v, name) => [`${v} ккал`, name === 'norm' ? 'Норма' : 'Съедено']}
             />
             <Bar dataKey="kcal" fill="url(#barGrad)" radius={[4, 4, 0, 0]} isAnimationActive={false} />
             {/* Step line: each day is judged against the norm in force on that day. */}
-            <Line dataKey="norm" type="stepAfter" stroke="#f2f2f7" strokeDasharray="5 4" strokeWidth={1.5} dot={false} isAnimationActive={false} />
+            <Line dataKey="norm" type="stepAfter" stroke="var(--chart-norm)" strokeDasharray="5 4" strokeWidth={1.5} dot={false} isAnimationActive={false} />
           </ComposedChart>
         </ResponsiveContainer>
       </div>
