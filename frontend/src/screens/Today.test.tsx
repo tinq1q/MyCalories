@@ -150,6 +150,25 @@ describe('Today', () => {
     expect(screen.getByText(hasText('осталось 680'))).toBeInTheDocument()
   })
 
+  it('Escape closes the entry sheet', () => {
+    seed(withNorm)
+    view()
+    fireEvent.click(screen.getByRole('button', { name: /Овсянка.*600/ }))
+    expect(screen.getByRole('dialog', { name: 'Овсянка' })).toBeInTheDocument()
+    fireEvent.keyDown(document, { key: 'Escape' })
+    expect(screen.queryByRole('dialog')).toBeNull()
+  })
+
+  it('a backdrop click closes the entry sheet, a click inside does not', () => {
+    seed(withNorm)
+    view()
+    fireEvent.click(screen.getByRole('button', { name: /Овсянка.*600/ }))
+    fireEvent.click(screen.getByLabelText('Граммы'))
+    expect(screen.getByRole('dialog')).toBeInTheDocument()
+    fireEvent.click(screen.getByTestId('sheet-backdrop'))
+    expect(screen.queryByRole('dialog')).toBeNull()
+  })
+
   it('edits grams with a comma decimal', () => {
     seed(withNorm)
     view()
@@ -185,6 +204,15 @@ describe('Today', () => {
       seed(stale)
       view()
       fireEvent.click(screen.getByRole('button', { name: 'Напомнить позже' }))
+      expect(screen.queryByText(heading)).toBeNull()
+      expect(localStorage.getItem(WEIGHT_PROMPT_SNOOZE_KEY)).toBe(addDays(todayKey(), 3))
+    })
+
+    it('opens as a bottom sheet; Escape snoozes it', () => {
+      seed(stale)
+      view()
+      expect(screen.getByRole('dialog', { name: 'Вес на этой неделе' })).toBeInTheDocument()
+      fireEvent.keyDown(document, { key: 'Escape' })
       expect(screen.queryByText(heading)).toBeNull()
       expect(localStorage.getItem(WEIGHT_PROMPT_SNOOZE_KEY)).toBe(addDays(todayKey(), 3))
     })

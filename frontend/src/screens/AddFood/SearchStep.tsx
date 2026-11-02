@@ -1,3 +1,4 @@
+import { m } from 'motion/react'
 import { Link } from 'react-router-dom'
 import { PHOTO_ENABLED } from '../../config'
 import { useProductSearch } from '../../hooks/useProductSearch'
@@ -6,6 +7,7 @@ import type { Meal, Product } from '../../domain/types'
 import { useDiary } from '../../storage/DiaryContext'
 import Glass from '../../ui/Glass'
 import { fmt } from '../../ui/format'
+import { SPRING, useReducedMotionSafe } from '../../ui/motion'
 
 interface Props {
   day: string
@@ -17,9 +19,17 @@ interface Props {
   onCreate(): void
 }
 
+// The card morphs into the amount step's header (same layoutId there).
 function ProductRow({ p, onPick }: { p: Product; onPick(p: Product): void }) {
+  const reduced = useReducedMotionSafe()
   return (
-    <button type="button" className="glass product-row" onClick={() => onPick(p)}>
+    <m.button
+      type="button"
+      className="glass product-row"
+      layoutId={reduced ? undefined : `product-${p.id}`}
+      transition={SPRING}
+      onClick={() => onPick(p)}
+    >
       <span className="product-info">
         <span className="product-name">{p.name}</span>
         <small>{fmt(p.kcal)} ккал · 100 г</small>
@@ -27,7 +37,7 @@ function ProductRow({ p, onPick }: { p: Product; onPick(p: Product): void }) {
       <span className="plus" aria-hidden="true">
         +
       </span>
-    </button>
+    </m.button>
   )
 }
 

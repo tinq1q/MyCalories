@@ -374,7 +374,8 @@ ul {
   color: var(--nav-active-fg);
 }
 
-/* Active tab highlight; NavBar slides it between tabs. */
+/* Active tab highlight. A plain span, so it shows before Motion loads;
+   once layout features arrive NavBar slides it between tabs (layoutId). */
 .nav-pill {
   position: absolute;
   inset: 0;
@@ -584,6 +585,30 @@ ul {
   cursor: pointer;
 }
 
+/* Diary row: swiping it left reveals «Удалить» and deletes past 40% width. */
+.swipe-row {
+  position: relative;
+  /* Clips the row sliding out sideways but not the new-entry glow. */
+  overflow-x: clip;
+}
+
+.swipe-row-hint {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  padding-right: 4px;
+  color: var(--danger);
+  font-size: 13px;
+  font-weight: 600;
+  pointer-events: none;
+}
+
+.swipe-row-fg {
+  position: relative;
+}
+
 .entry-name {
   flex: 1;
   min-width: 0;
@@ -651,6 +676,20 @@ ul {
   padding: 20px 18px calc(20px + env(safe-area-inset-bottom));
   border-radius: 28px 28px 0 0;
   background: var(--sheet-bg);
+  /* Motion drags it down; the browser must not pan the page instead. */
+  touch-action: none;
+}
+
+/* Drag handle; the whole panel (outside fields and buttons) can be pulled down. */
+.sheet-grip {
+  align-self: center;
+  width: 40px;
+  height: 4px;
+  margin: -8px 0 2px;
+  border-radius: 2px;
+  background: var(--text-muted);
+  opacity: 0.5;
+  cursor: grab;
 }
 
 @media (min-width: 768px) {
@@ -1407,34 +1446,3 @@ a.glass:active,
 .swatch-sunset { background: linear-gradient(135deg, #ff5f6d, #ffc371, #ff4e9b); }
 .swatch-ocean { background: linear-gradient(135deg, #00c6ff, #0072ff, #00e5c3); }
 .swatch-night { background: radial-gradient(120% 90% at 50% 0%, #2a1f5c, #0a0a10); }
-
-/* ---------- weekly weight prompt ---------- */
-.weight-prompt {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-  padding: 14px 18px 18px;
-}
-
-/* Drag handle: pulling it down snoozes the card. */
-.weight-prompt-head {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 8px;
-  touch-action: none;
-  cursor: grab;
-}
-
-.weight-prompt-head h2 {
-  align-self: flex-start;
-  font-size: 17px;
-}
-
-.weight-prompt-grip {
-  width: 40px;
-  height: 4px;
-  border-radius: 2px;
-  background: var(--text-muted);
-  opacity: 0.5;
-}

@@ -1,2 +1,2 @@
-// Motion's animation features, split out so they download after first paint.
-export { domAnimation as default } from 'motion/react'
+// Motion's features (animation, drag, layout), split out so they download after first paint.
+export { domMax as default } from 'motion/react'

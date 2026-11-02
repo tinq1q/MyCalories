@@ -11,6 +11,7 @@ import BackupReminder from '../ui/BackupReminder'
 import Glass from '../ui/Glass'
 import MacroBars from '../ui/MacroBars'
 import Ring from '../ui/Ring'
+import SwipeRow from '../ui/SwipeRow'
 import { fmt } from '../ui/format'
 import { useToast } from '../ui/Toast'
 import EntrySheet from './EntrySheet'
@@ -110,8 +111,6 @@ export default function Today() {
         </button>
       </header>
 
-      {day === today && !promptDone && shouldPromptWeight(state, today, snoozedUntil) && <WeightPrompt onDone={() => setPromptDone(true)} />}
-
       <Glass as="section" className="summary" aria-label="Итоги дня">
         <div className="ring-row">
           {norm ? (
@@ -144,11 +143,13 @@ export default function Today() {
               <ul>
                 {items.map((e) => (
                   <li key={e.id}>
-                    <button type="button" className={e.id === newId ? 'entry is-new' : 'entry'} onClick={() => setEditing(e)}>
-                      <span className="entry-name">{e.product.name}</span>
-                      <span className="muted">{fmt(e.grams)} г</span>
-                      <span className="entry-kcal">{fmt(nutrientsFor(e.product, e.grams).kcal)}</span>
-                    </button>
+                    <SwipeRow onDelete={() => remove(e)}>
+                      <button type="button" className={e.id === newId ? 'entry is-new' : 'entry'} onClick={() => setEditing(e)}>
+                        <span className="entry-name">{e.product.name}</span>
+                        <span className="muted">{fmt(e.grams)} г</span>
+                        <span className="entry-kcal">{fmt(nutrientsFor(e.product, e.grams).kcal)}</span>
+                      </button>
+                    </SwipeRow>
                   </li>
                 ))}
               </ul>
@@ -160,6 +161,8 @@ export default function Today() {
       <Link className="fab" to={`/add?day=${day}`} aria-label="Добавить еду">
         +
       </Link>
+
+      {day === today && !promptDone && shouldPromptWeight(state, today, snoozedUntil) && <WeightPrompt onDone={() => setPromptDone(true)} />}
 
       {editing && (
         <EntrySheet

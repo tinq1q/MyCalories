@@ -34,16 +34,9 @@ export default function NavBar() {
         <NavLink key={i.to} to={i.to} end={i.end} className="nav-item">
           {({ isActive }) => (
             <>
-              {/* The highlight springs up under the newly chosen tab. */}
-              {isActive && (
-                <m.span
-                  className="nav-pill"
-                  initial={reduced ? false : { opacity: 0, scale: 0.8 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  transition={SPRING}
-                  aria-hidden="true"
-                />
-              )}
+              {/* The highlight slides over to the newly chosen tab; it is visible
+                  in place before Motion's layout features have loaded. */}
+              {isActive && <m.span className="nav-pill" layoutId="nav-pill" transition={reduced ? { duration: 0 } : SPRING} aria-hidden="true" />}
               {i.icon}
               <span>{i.label}</span>
             </>

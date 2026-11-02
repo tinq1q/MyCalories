@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { m } from 'motion/react'
 import { dayTotals, nutrientsFor } from '../../domain/nutrition'
 import { normForDate } from '../../domain/norm'
 import { MAX_GRAMS, parseGrams } from '../../domain/grams'
@@ -7,6 +8,7 @@ import type { Meal, Product } from '../../domain/types'
 import { useDiary } from '../../storage/DiaryContext'
 import Glass from '../../ui/Glass'
 import { fmt } from '../../ui/format'
+import { SPRING, useReducedMotionSafe } from '../../ui/motion'
 
 const STEP = 10
 const SLIDER_MAX = 1000
@@ -23,6 +25,7 @@ interface Props {
 
 export default function AmountStep({ product, meal, day, onBack, onAdd }: Props) {
   const { state } = useDiary()
+  const reduced = useReducedMotionSafe()
 
   // Grams of the most recent entry with this product (latest date; later in the list wins ties).
   let lastGrams: number | null = null
@@ -62,12 +65,13 @@ export default function AmountStep({ product, meal, day, onBack, onAdd }: Props)
         <span className="muted">{MEAL_LABELS[meal]}</span>
       </header>
 
-      <Glass>
+      {/* Grows out of the search result card that was tapped. */}
+      <m.div className="glass" layoutId={reduced ? undefined : `product-${product.id}`} transition={SPRING}>
         <h1 className="product-title">{product.name}</h1>
         <p className="muted">
           на 100 г: {fmt(product.kcal)} ккал · Б {fmt(product.protein)} · Ж {fmt(product.fat)} · У {fmt(product.carbs)}
         </p>
-      </Glass>
+      </m.div>
 
       <Glass className="grams-card">
         <div className="grams-row">
