@@ -54,6 +54,37 @@ describe('Onboarding', () => {
     expect(saved.normHistory[0].kcal).toBe(2345)
   })
 
+  it('shows the target weight only for lose/gain and validates it against the weight', () => {
+    view()
+    fireEvent.click(screen.getByRole('button', { name: 'Мужской' }))
+    type('Возраст', '30')
+    type('Рост, см', '180')
+    type('Вес, кг', '80')
+    expect(screen.queryByLabelText('Желаемый вес, кг')).toBeNull()
+    fireEvent.click(screen.getByRole('button', { name: 'Похудеть' }))
+    type('Желаемый вес, кг', '85')
+    expect(screen.getByText('Для цели «Похудеть» желаемый вес должен быть меньше текущего')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Готово' })).toBeDisabled()
+    type('Желаемый вес, кг', '70,5')
+    expect(screen.getByRole('button', { name: 'Готово' })).toBeEnabled()
+    fireEvent.click(screen.getByRole('button', { name: 'Готово' }))
+    expect(JSON.parse(localStorage.getItem(STORAGE_KEY) ?? '{}').profile.targetWeightKg).toBe(70.5)
+  })
+
+  it('saves targetWeightKg null when the goal is switched back to keep', () => {
+    view()
+    type('Возраст', '30')
+    type('Рост, см', '180')
+    type('Вес, кг', '80')
+    fireEvent.click(screen.getByRole('button', { name: 'Набрать' }))
+    type('Желаемый вес, кг', '70')
+    expect(screen.getByText('Для цели «Набрать» желаемый вес должен быть больше текущего')).toBeInTheDocument()
+    type('Желаемый вес, кг', '90')
+    fireEvent.click(screen.getByRole('button', { name: 'Держать вес' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Готово' }))
+    expect(JSON.parse(localStorage.getItem(STORAGE_KEY) ?? '{}').profile.targetWeightKg).toBeNull()
+  })
+
   it('rejects out-of-range values', () => {
     view()
     type('Возраст', '5')

@@ -183,6 +183,22 @@ describe('Profile', () => {
     expect(stored().profile.trackWeight).toBe(false)
   })
 
+  it('target weight: hidden for keep, blocks saving on the wrong side, saves a valid one', () => {
+    seed({ profile, normHistory: [calc] })
+    view()
+    expect(screen.queryByLabelText('Желаемый вес, кг')).toBeNull()
+    fireEvent.click(screen.getByRole('button', { name: 'Похудеть' }))
+    fireEvent.change(screen.getByLabelText('Желаемый вес, кг'), { target: { value: '80' } })
+    expect(screen.getByText('Для цели «Похудеть» желаемый вес должен быть меньше текущего')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Сохранить' })).toBeDisabled()
+    fireEvent.change(screen.getByLabelText('Желаемый вес, кг'), { target: { value: '72' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Сохранить' }))
+    expect(stored().profile.targetWeightKg).toBe(72)
+    fireEvent.click(screen.getByRole('button', { name: 'Держать вес' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Сохранить' }))
+    expect(stored().profile.targetWeightKg).toBeNull()
+  })
+
   it('after an import the form shows the imported profile, not stale values', async () => {
     seed({ profile, normHistory: [calc] })
     const other: ProfileT = { ...profile, weightKg: 70, age: 44, updatedAt: '2026-06-01T00:00:00.000Z' }

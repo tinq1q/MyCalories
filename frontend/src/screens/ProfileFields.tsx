@@ -16,18 +16,20 @@ export interface Draft {
   age: string
   heightCm: string
   weightKg: string
+  targetWeightKg: string
   activity: Activity
   goal: Goal
   trackWeight: boolean
 }
 
-export const emptyDraft: Draft = { sex: 'male', age: '', heightCm: '', weightKg: '', activity: 'light', goal: 'keep', trackWeight: true }
+export const emptyDraft: Draft = { sex: 'male', age: '', heightCm: '', weightKg: '', targetWeightKg: '', activity: 'light', goal: 'keep', trackWeight: true }
 
 export const draftFrom = (p: Profile): Draft => ({
   sex: p.sex,
   age: String(p.age),
   heightCm: String(p.heightCm),
   weightKg: String(p.weightKg),
+  targetWeightKg: p.targetWeightKg == null ? '' : String(p.targetWeightKg),
   activity: p.activity,
   goal: p.goal,
   trackWeight: p.trackWeight,
@@ -38,17 +40,29 @@ const inRange = (s: string, min: number, max: number): number | null => {
   return s.trim() !== '' && Number.isFinite(n) && n >= min && n <= max ? n : null
 }
 
+// The target must lie on the goal's side of the current weight; keep has no target.
+const targetWrongSide = (d: Draft): boolean => {
+  const weight = inRange(d.weightKg, 30, 300)
+  const target = inRange(d.targetWeightKg, 30, 300)
+  if (weight === null || target === null) return false
+  return d.goal === 'lose' ? target >= weight : d.goal === 'gain' ? target <= weight : false
+}
+
 // Returns a complete profile, or null while any field is invalid.
 export function profileFromDraft(d: Draft): Profile | null {
   const age = inRange(d.age, 10, 100)
   const heightCm = inRange(d.heightCm, 100, 250)
   const weightKg = inRange(d.weightKg, 30, 300)
   if (age === null || heightCm === null || weightKg === null) return null
+  const targetWeightKg = d.goal === 'keep' ? null : inRange(d.targetWeightKg, 30, 300)
+  if (d.goal !== 'keep' && d.targetWeightKg.trim() !== '' && targetWeightKg === null) return null
+  if (targetWrongSide(d)) return null
   return {
     sex: d.sex,
     age: Math.round(age),
     heightCm,
     weightKg,
+    targetWeightKg,
     activity: d.activity,
     goal: d.goal,
     trackWeight: d.trackWeight,
@@ -105,6 +119,16 @@ export default function ProfileFields({ draft, onChange }: { draft: Draft; onCha
         </select>
       </label>
       <Choice label="Цель" value={draft.goal} options={GOAL_LABELS} onChange={(v) => set('goal', v)} />
+      {draft.goal !== 'keep' && (
+        <>
+          <Num label="Желаемый вес, кг" value={draft.targetWeightKg} min={30} max={300} onChange={(v) => set('targetWeightKg', v)} />
+          {targetWrongSide(draft) && (
+            <span className="error">
+              Для цели «{GOAL_LABELS[draft.goal]}» желаемый вес должен быть {draft.goal === 'lose' ? 'меньше' : 'больше'} текущего
+            </span>
+          )}
+        </>
+      )}
       <label className="check">
         <input type="checkbox" checked={draft.trackWeight} onChange={(e) => set('trackWeight', e.target.checked)} />
         Отслеживать вес
