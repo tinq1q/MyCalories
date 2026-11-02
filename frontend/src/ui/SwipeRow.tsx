@@ -6,6 +6,8 @@ import { useReducedMotionSafe } from './motion'
 
 // Share of the row's width a left swipe must cover to delete.
 const DELETE_SHARE = 0.4
+// A touch that ends this far (px) left of where it started was a row swipe.
+const LEFT_SWIPE = 10
 
 // Row that deletes itself when swiped left past 40% of its width.
 // drag="x" leaves vertical panning to the browser, so scrolling over rows never swipes.
@@ -13,6 +15,7 @@ export default function SwipeRow({ onDelete, children }: { onDelete(): void; chi
   const reduced = useReducedMotionSafe()
   const row = useRef<HTMLDivElement>(null)
   const dragged = useRef(false)
+  const touchX = useRef<number | null>(null)
   const x = useMotionValue(0)
   const hint = useTransform(x, [-70, -20], [1, 0])
 
@@ -26,9 +29,14 @@ export default function SwipeRow({ onDelete, children }: { onDelete(): void; chi
     <div
       className="swipe-row"
       ref={row}
-      // Keeps Today's swipe-to-change-day from reacting to a row swipe.
-      onTouchStart={(e) => e.stopPropagation()}
-      onTouchEnd={(e) => e.stopPropagation()}
+      // A left swipe belongs to the row, so Today's day swipe must not see it;
+      // a right swipe over a row still goes to the previous day.
+      onTouchStart={(e) => (touchX.current = e.touches[0].clientX)}
+      onTouchEnd={(e) => {
+        const from = touchX.current
+        touchX.current = null
+        if (from !== null && e.changedTouches[0].clientX - from < -LEFT_SWIPE) e.stopPropagation()
+      }}
     >
       <m.span className="swipe-row-hint" style={{ opacity: hint }} aria-hidden="true">
         Удалить

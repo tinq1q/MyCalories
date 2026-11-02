@@ -676,20 +676,44 @@ ul {
   padding: 20px 18px calc(20px + env(safe-area-inset-bottom));
   border-radius: 28px 28px 0 0;
   background: var(--sheet-bg);
-  /* Motion drags it down; the browser must not pan the page instead. */
-  touch-action: none;
+  max-height: calc(100dvh - 24px);
+  overflow-y: auto;
 }
 
-/* Drag handle; the whole panel (outside fields and buttons) can be pulled down. */
+/* Drag areas: the grip and the heading. Only they block browser panning
+   (Motion drags them), so taller content still scrolls. */
+.sheet-grip,
+.sheet > h2 {
+  touch-action: none;
+  cursor: grab;
+}
+
+/* A 4 px bar inside a taller hit area. */
 .sheet-grip {
   align-self: center;
-  width: 40px;
-  height: 4px;
-  margin: -8px 0 2px;
-  border-radius: 2px;
+  width: 64px;
+  height: 20px;
+  margin: -16px 0 -6px;
+  padding: 8px 12px;
+  border-radius: 6px;
   background: var(--text-muted);
+  background-clip: content-box;
   opacity: 0.5;
-  cursor: grab;
+}
+
+/* Non-modal sheet (weekly weight prompt): no backdrop, floats above the nav
+   and the «+» button so both stay tappable. */
+.sheet-floating {
+  position: fixed;
+  z-index: 30;
+  left: 12px;
+  right: 12px;
+  bottom: calc(var(--nav-h) + 100px);
+  width: auto;
+  margin: 0 auto;
+  max-height: calc(100dvh - var(--nav-h) - 124px);
+  padding-bottom: 18px;
+  border-radius: var(--radius);
 }
 
 @media (min-width: 768px) {
@@ -699,6 +723,14 @@ ul {
 
   .sheet {
     border-radius: var(--radius);
+  }
+
+  /* Right of the side menu, above the corner «+». */
+  .sheet-floating {
+    left: 240px;
+    right: 16px;
+    bottom: 110px;
+    max-height: calc(100dvh - 134px);
   }
 }
 

@@ -67,10 +67,13 @@ export default function AmountStep({ product, meal, day, onBack, onAdd }: Props)
 
       {/* Grows out of the search result card that was tapped. */}
       <m.div className="glass" layoutId={reduced ? undefined : `product-${product.id}`} transition={SPRING}>
-        <h1 className="product-title">{product.name}</h1>
-        <p className="muted">
+        {/* layout="position": the text only moves with the card, never stretches. */}
+        <m.h1 className="product-title" layout={reduced ? undefined : 'position'} transition={SPRING}>
+          {product.name}
+        </m.h1>
+        <m.p className="muted" layout={reduced ? undefined : 'position'} transition={SPRING}>
           на 100 г: {fmt(product.kcal)} ккал · Б {fmt(product.protein)} · Ж {fmt(product.fat)} · У {fmt(product.carbs)}
-        </p>
+        </m.p>
       </m.div>
 
       <Glass className="grams-card">

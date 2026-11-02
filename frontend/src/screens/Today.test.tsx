@@ -119,6 +119,24 @@ describe('Today', () => {
     expect(screen.getByTestId('loc')).toHaveTextContent(`/?day=${todayKey()}`)
   })
 
+  it('a rightward swipe starting on a diary row still goes to the previous day', () => {
+    seed(withNorm)
+    view()
+    const row = screen.getByRole('button', { name: /Овсянка.*600/ })
+    fireEvent.touchStart(row, { touches: [{ clientX: 100, clientY: 300 }] })
+    fireEvent.touchEnd(row, { changedTouches: [{ clientX: 220, clientY: 305 }] })
+    expect(screen.getByTestId('loc')).toHaveTextContent(`/?day=${addDays(todayKey(), -1)}`)
+  })
+
+  it('a leftward swipe on a diary row does not change the day', () => {
+    seed(withNorm)
+    view()
+    const row = screen.getByRole('button', { name: /Овсянка.*600/ })
+    fireEvent.touchStart(row, { touches: [{ clientX: 220, clientY: 300 }] })
+    fireEvent.touchEnd(row, { changedTouches: [{ clientX: 100, clientY: 305 }] })
+    expect(screen.getByTestId('loc').textContent).toBe('/')
+  })
+
   it('mostly vertical or short swipes are ignored', () => {
     seed(withNorm)
     view()
@@ -206,6 +224,18 @@ describe('Today', () => {
       fireEvent.click(screen.getByRole('button', { name: 'Напомнить позже' }))
       expect(screen.queryByText(heading)).toBeNull()
       expect(localStorage.getItem(WEIGHT_PROMPT_SNOOZE_KEY)).toBe(addDays(todayKey(), 3))
+    })
+
+    it('has no backdrop: «+» and the nav stay usable and do not snooze it', () => {
+      seed(stale)
+      view()
+      expect(screen.getByRole('dialog', { name: 'Вес на этой неделе' })).toBeInTheDocument()
+      expect(screen.queryByTestId('sheet-backdrop')).toBeNull()
+      fireEvent.click(screen.getByRole('link', { name: 'Добавить еду' }))
+      expect(screen.getByTestId('loc')).toHaveTextContent('/add?day=')
+      fireEvent.click(screen.getByRole('link', { name: 'Профиль' }))
+      expect(screen.getByTestId('loc')).toHaveTextContent('/profile')
+      expect(localStorage.getItem(WEIGHT_PROMPT_SNOOZE_KEY)).toBeNull()
     })
 
     it('opens as a bottom sheet; Escape snoozes it', () => {

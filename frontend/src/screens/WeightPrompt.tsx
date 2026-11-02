@@ -8,7 +8,7 @@ import Sheet from '../ui/Sheet'
 import { useToast } from '../ui/Toast'
 
 // Weekly «how is your weight?» sheet. Closing it any way but «Сохранить»
-// (button, drag down, Escape, backdrop) snoozes it.
+// (button, drag down, Escape) snoozes it. Non-modal: the nav and «+» stay usable.
 export default function WeightPrompt({ onDone }: { onDone(): void }) {
   const { state, addWeight } = useDiary()
   const toast = useToast()
@@ -33,7 +33,7 @@ export default function WeightPrompt({ onDone }: { onDone(): void }) {
   }
 
   return (
-    <Sheet label="Вес на этой неделе" onClose={snooze}>
+    <Sheet label="Вес на этой неделе" onClose={snooze} modal={false}>
       <h2>Как твой вес на этой неделе?</h2>
       <p className="muted">Человечек обновится, а норма пересчитается.</p>
       <label className="field">
