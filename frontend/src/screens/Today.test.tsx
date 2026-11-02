@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, within } from '@testing-library/react'
+import { cleanup, fireEvent, render, screen, within } from '@testing-library/react'
 import { MemoryRouter, useLocation } from 'react-router-dom'
 import { act } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
@@ -6,6 +6,7 @@ import { addDays, todayKey } from '../domain/dates'
 import type { DiaryState, Entry, Meal, Product } from '../domain/types'
 import { emptyState, STORAGE_KEY } from '../storage/storage'
 import { WEIGHT_PROMPT_SNOOZE_KEY } from '../domain/weightPrompt'
+import { CELEBRATED_KEY } from '../domain/celebration'
 import { DiaryProvider } from '../storage/DiaryContext'
 import { ToastProvider } from '../ui/Toast'
 import NavBar from '../ui/NavBar'
@@ -289,6 +290,42 @@ describe('Today', () => {
       expect(screen.getByRole('button', { name: /Овсянка.*720/ })).not.toHaveClass('is-new')
       expect(screen.getByTestId('loc')).toHaveTextContent(`/?day=${todayKey()}`)
       expect(screen.getByTestId('loc').textContent).not.toContain('new=')
+    })
+  })
+  describe('goal celebration', () => {
+    const atKcal = (kcal: number, date = todayKey()): Partial<DiaryState> => ({
+      normHistory: withNorm.normHistory,
+      entries: [entry('a', 'breakfast', kcal, date)],
+    })
+    const ring = () => document.querySelector('.ring')!
+
+    it('marks today as celebrated once the norm is reached', () => {
+      seed(atKcal(2000))
+      view()
+      expect(localStorage.getItem(CELEBRATED_KEY)).toBe(todayKey())
+    })
+
+    it('does not mark a past day or a day below the norm', () => {
+      seed(atKcal(2000, addDays(todayKey(), -1)))
+      view(`/?day=${addDays(todayKey(), -1)}`)
+      expect(localStorage.getItem(CELEBRATED_KEY)).toBeNull()
+      cleanup()
+      seed(atKcal(1000))
+      view()
+      expect(localStorage.getItem(CELEBRATED_KEY)).toBeNull()
+    })
+
+    it('turns the ring to danger over the norm', () => {
+      seed(atKcal(2500))
+      view()
+      expect(ring()).toHaveClass('is-over')
+      expect(localStorage.getItem(CELEBRATED_KEY)).toBeNull()
+    })
+
+    it('keeps the ring normal inside the norm', () => {
+      seed(atKcal(2000))
+      view()
+      expect(ring()).not.toHaveClass('is-over')
     })
   })
 })

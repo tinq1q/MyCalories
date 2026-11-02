@@ -10,6 +10,7 @@ import { useDiary } from '../storage/DiaryContext'
 import { fmt } from '../ui/format'
 import Glass from '../ui/Glass'
 import JellyAvatar from '../ui/JellyAvatar'
+import Tilt from '../ui/Tilt'
 import { FILL, useReducedMotionSafe } from '../ui/motion'
 import { useToast } from '../ui/Toast'
 
@@ -58,26 +59,28 @@ export default function Weight() {
   return (
     <div className="weight">
       <h1>Вес</h1>
-      <Glass as="section" className="avatar-card">
-        <JellyAvatar
-          heightCm={profile.heightCm}
-          sex={profile.sex}
-          weightKg={nowKg}
-          targetKg={progress ? targetOf(profile) : null}
-        />
-        {progress && (
-          <div className="goal-progress" data-testid="goal-progress">
-            <div className="bar">
-              <m.i
-                initial={reduced ? false : { width: '0%' }}
-                animate={{ width: `${progress.ratio * 100}%` }}
-                transition={reduced ? { duration: 0 } : FILL}
-              />
+      <Tilt>
+        <Glass as="section" className="avatar-card">
+          <JellyAvatar
+            heightCm={profile.heightCm}
+            sex={profile.sex}
+            weightKg={nowKg}
+            targetKg={progress ? targetOf(profile) : null}
+          />
+          {progress && (
+            <div className="goal-progress" data-testid="goal-progress">
+              <div className="bar">
+                <m.i
+                  initial={reduced ? false : { width: '0%' }}
+                  animate={{ width: `${progress.ratio * 100}%` }}
+                  transition={reduced ? { duration: 0 } : FILL}
+                />
+              </div>
+              <p>{progress.reached ? 'цель достигнута' : `осталось ${fmt(progress.leftKg)} кг`}</p>
             </div>
-            <p>{progress.reached ? 'цель достигнута' : `осталось ${fmt(progress.leftKg)} кг`}</p>
-          </div>
-        )}
-      </Glass>
+          )}
+        </Glass>
+      </Tilt>
       <Glass as="section" className="card-stack">
         <label className="field">
           Вес, кг

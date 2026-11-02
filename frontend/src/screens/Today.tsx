@@ -1,6 +1,8 @@
-import { useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
+import { CELEBRATED_KEY, shouldCelebrate } from '../domain/celebration'
 import { addDays, isValidDayKey, todayKey } from '../domain/dates'
+import { dayStatus } from '../domain/dayStatus'
 import { dayTotals, mealTotals, nutrientsFor } from '../domain/nutrition'
 import { normForDate } from '../domain/norm'
 import { shouldPromptWeight, WEIGHT_PROMPT_SNOOZE_KEY } from '../domain/weightPrompt'
@@ -12,6 +14,7 @@ import Glass from '../ui/Glass'
 import MacroBars from '../ui/MacroBars'
 import Ring from '../ui/Ring'
 import SwipeRow from '../ui/SwipeRow'
+import Tilt from '../ui/Tilt'
 import { fmt } from '../ui/format'
 import { useToast } from '../ui/Toast'
 import EntrySheet from './EntrySheet'
@@ -36,6 +39,24 @@ function readSnooze(): string | null {
     return localStorage.getItem(WEIGHT_PROMPT_SNOOZE_KEY)
   } catch {
     return null
+  }
+}
+
+// Without storage the marker is kept for this session only.
+let celebratedFallback: string | null = null
+function readCelebrated(): string | null {
+  try {
+    return localStorage.getItem(CELEBRATED_KEY) ?? celebratedFallback
+  } catch {
+    return celebratedFallback
+  }
+}
+function writeCelebrated(day: string) {
+  celebratedFallback = day
+  try {
+    localStorage.setItem(CELEBRATED_KEY, day)
+  } catch {
+    // Storage unavailable: the in-memory marker above is enough.
   }
 }
 
@@ -72,6 +93,18 @@ export default function Today() {
   const totals = dayTotals(state.entries, day)
   const { title, sub } = dayTitle(day, today)
   const remaining = norm ? norm.kcal - totals.kcal : 0
+  const status = dayStatus(totals.kcal, state.entries.some((e) => e.date === day), norm)
+
+  // Reaching today's norm is celebrated once a day; the marker is written once shown.
+  // Leaving today cuts the burst short.
+  const [celebrating, setCelebrating] = useState(false)
+  const celebrateNow = shouldCelebrate(status, day, today, readCelebrated())
+  if (celebrateNow && !celebrating) setCelebrating(true)
+  if (day !== today && celebrating) setCelebrating(false)
+  useEffect(() => {
+    if (celebrating) writeCelebrated(today)
+  }, [celebrating, today])
+  const celebrated = useCallback(() => setCelebrating(false), [])
 
   const remove = (e: Entry) => {
     removeEntry(e.id)
@@ -111,22 +144,30 @@ export default function Today() {
         </button>
       </header>
 
-      <Glass as="section" className="summary" aria-label="Итоги дня">
-        <div className="ring-row">
-          {norm ? (
-            <>
-              <Ring value={totals.kcal} max={norm.kcal} />
-              <div className="kcal">
-                <span>ккал из {fmt(norm.kcal)}</span>
-                <span className="muted">{remaining >= 0 ? `осталось ${fmt(remaining)}` : `сверх нормы ${fmt(-remaining)}`}</span>
-              </div>
-            </>
-          ) : (
-            <p className="kcal-only">{fmt(totals.kcal)} ккал</p>
-          )}
-        </div>
-        <MacroBars totals={totals} norm={norm} />
-      </Glass>
+      <Tilt>
+        <Glass as="section" className="summary" aria-label="Итоги дня">
+          <div className="ring-row">
+            {norm ? (
+              <>
+                <Ring
+                  value={totals.kcal}
+                  max={norm.kcal}
+                  over={status === 'over'}
+                  celebrate={celebrating}
+                  onCelebrated={celebrated}
+                />
+                <div className="kcal">
+                  <span>ккал из {fmt(norm.kcal)}</span>
+                  <span className="muted">{remaining >= 0 ? `осталось ${fmt(remaining)}` : `сверх нормы ${fmt(-remaining)}`}</span>
+                </div>
+              </>
+            ) : (
+              <p className="kcal-only">{fmt(totals.kcal)} ккал</p>
+            )}
+          </div>
+          <MacroBars totals={totals} norm={norm} />
+        </Glass>
+      </Tilt>
 
       {MEALS.map((meal) => {
         const items = state.entries.filter((e) => e.date === day && e.meal === meal)

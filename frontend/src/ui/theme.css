@@ -494,6 +494,98 @@ ul {
   font-weight: 700;
 }
 
+/* Stop colours of the arc gradient; over the norm the whole arc turns to danger. */
+.ring-stop-from {
+  stop-color: var(--ring-from);
+  transition: stop-color 0.6s ease;
+}
+
+.ring-stop-to {
+  stop-color: var(--ring-to);
+  transition: stop-color 0.6s ease;
+}
+
+.ring.is-over .ring-stop-from,
+.ring.is-over .ring-stop-to {
+  stop-color: var(--danger);
+}
+
+/* Reaching the norm: a soft flash around the ring plus confetti (Celebration). */
+.ring-flash {
+  position: absolute;
+  inset: -10px;
+  border-radius: 50%;
+  background: radial-gradient(circle, transparent 45%, var(--ring-to) 62%, transparent 72%);
+  pointer-events: none;
+  opacity: 0;
+  animation: ring-flash 0.9s ease-out;
+}
+
+@keyframes ring-flash {
+  0% {
+    opacity: 0;
+    transform: scale(0.85);
+  }
+  30% {
+    opacity: 0.9;
+  }
+  100% {
+    opacity: 0;
+    transform: scale(1.25);
+  }
+}
+
+.confetti {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 2;
+}
+
+.confetti i {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 8px;
+  height: 5px;
+  margin: -2.5px 0 0 -4px;
+  border-radius: 1px;
+}
+
+.confetti i.is-round {
+  width: 6px;
+  height: 6px;
+  margin: -3px 0 0 -3px;
+  border-radius: 50%;
+}
+
+/* ---------- card tilt (Tilt) ----------
+   Only transform and opacity change; the glare never takes pointer events. */
+.tilt {
+  position: relative;
+  transition: transform 0.25s ease-out;
+}
+
+.tilt-glare-clip {
+  position: absolute;
+  inset: 0;
+  border-radius: var(--radius);
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.tilt-glare {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 240px;
+  height: 240px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(255, 255, 255, 0.28), transparent 70%);
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+
 .kcal {
   display: flex;
   flex-direction: column;
