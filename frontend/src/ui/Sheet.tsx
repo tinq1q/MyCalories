@@ -12,6 +12,9 @@ const CLOSE_VELOCITY = 500
 // theme.css), so the rest of the panel keeps native scrolling and taps.
 const DRAG_AREA = '.sheet-grip, .sheet > h2'
 
+// Open sheets in mount order; Escape closes only the topmost one.
+const openSheets: object[] = []
+
 interface Props {
   label: string
   onClose(): void
@@ -28,14 +31,23 @@ export default function Sheet({ label, onClose, className, modal = true, childre
   const controls = useDragControls()
   // A drag that ends over the backdrop must not count as a backdrop tap.
   const dragged = useRef(false)
+  const closeRef = useRef(onClose)
+  useEffect(() => {
+    closeRef.current = onClose
+  })
 
   useEffect(() => {
+    const token = {}
+    openSheets.push(token)
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') onClose()
+      if (e.key === 'Escape' && openSheets[openSheets.length - 1] === token) closeRef.current()
     }
     document.addEventListener('keydown', onKey)
-    return () => document.removeEventListener('keydown', onKey)
-  }, [onClose])
+    return () => {
+      document.removeEventListener('keydown', onKey)
+      openSheets.splice(openSheets.indexOf(token), 1)
+    }
+  }, [])
 
   const startDrag = (e: PointerEvent) => {
     if ((e.target as Element).closest(DRAG_AREA)) controls.start(e)

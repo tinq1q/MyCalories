@@ -248,6 +248,20 @@ describe('Today', () => {
       expect(localStorage.getItem(WEIGHT_PROMPT_SNOOZE_KEY)).toBe(addDays(todayKey(), 3))
     })
 
+    it('Escape over an open entry sheet closes only that sheet, the prompt stays unsnoozed', () => {
+      seed({ ...withNorm, ...stale })
+      view()
+      fireEvent.click(screen.getByRole('button', { name: /Овсянка.*600/ }))
+      expect(screen.getByRole('dialog', { name: 'Овсянка' })).toBeInTheDocument()
+      fireEvent.keyDown(document, { key: 'Escape' })
+      expect(screen.queryByRole('dialog', { name: 'Овсянка' })).toBeNull()
+      expect(screen.getByText(heading)).toBeInTheDocument()
+      expect(localStorage.getItem(WEIGHT_PROMPT_SNOOZE_KEY)).toBeNull()
+      fireEvent.keyDown(document, { key: 'Escape' })
+      expect(screen.queryByText(heading)).toBeNull()
+      expect(localStorage.getItem(WEIGHT_PROMPT_SNOOZE_KEY)).toBe(addDays(todayKey(), 3))
+    })
+
     it('"Сохранить" with 91,5 adds that weight for today and shows a toast', () => {
       seed(stale)
       view()
