@@ -77,6 +77,16 @@ describe('Profile', () => {
     expect(stored().profile.weightKg).toBe(75)
   })
 
+  it('shows a mini avatar in the questionnaire card only with a profile', () => {
+    seed({ profile, normHistory: [calc] })
+    const { unmount } = view()
+    expect(screen.getByRole('img', { name: 'Аватар' })).toBeInTheDocument()
+    unmount()
+    localStorage.clear()
+    view()
+    expect(screen.queryByRole('img', { name: 'Аватар' })).toBeNull()
+  })
+
   it('sets and clears a manual norm', () => {
     seed({ profile, normHistory: [calc] })
     view()

@@ -1232,6 +1232,123 @@ a.glass:active,
   font-size: 14px;
 }
 
+/* ---------- Jelly avatar ----------
+   Blinking and breathing stop under reduced motion with every other
+   animation (see the prefers-reduced-motion block). */
+.jelly {
+  display: block;
+  overflow: visible;
+}
+
+.jelly-body,
+.jelly-head {
+  stroke: rgba(255, 255, 255, 0.85);
+  stroke-width: 2;
+}
+
+.jelly-shine {
+  stroke: rgba(255, 255, 255, 0.75);
+  stroke-width: 5;
+  stroke-linecap: round;
+}
+
+.jelly-gloss {
+  fill: rgba(255, 255, 255, 0.85);
+}
+
+.jelly-gloss-stop {
+  stop-color: rgba(255, 255, 255, 0.9);
+}
+
+.jelly-hair {
+  fill: var(--avatar-fill-to);
+  stroke: var(--avatar-ink);
+  stroke-opacity: 0.45;
+  stroke-width: 2;
+  stroke-linejoin: round;
+}
+
+.jelly-eye {
+  fill: var(--avatar-ink);
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: jelly-blink 4.5s infinite;
+}
+
+.jelly-smile {
+  fill: none;
+  stroke: var(--avatar-ink);
+  stroke-width: 3;
+  stroke-linecap: round;
+}
+
+.jelly-blush {
+  fill: #ff8fa3;
+  opacity: 0.6;
+}
+
+.jelly-goal {
+  stroke: var(--avatar-ink);
+  opacity: 0.45;
+}
+
+.jelly-breathe {
+  transform-box: fill-box;
+  transform-origin: 50% 100%;
+  animation: jelly-breathe 3.2s ease-in-out infinite;
+}
+
+@keyframes jelly-blink {
+  0%,
+  94%,
+  100% {
+    transform: scaleY(1);
+  }
+  97% {
+    transform: scaleY(0.1);
+  }
+}
+
+@keyframes jelly-breathe {
+  0%,
+  100% {
+    transform: none;
+  }
+  50% {
+    transform: translateY(-2px) scaleY(1.01);
+  }
+}
+
+.avatar-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  padding: 16px;
+}
+
+.goal-progress {
+  align-self: stretch;
+  text-align: center;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.goal-progress .bar {
+  margin: 0 0 6px;
+}
+
+.goal-progress .bar i {
+  background: linear-gradient(90deg, var(--ring-from), var(--ring-to));
+}
+
+.card-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
 /* Routed screen wrapper; ScreenTransition slides it in via top. */
 .screen {
   position: relative;

@@ -87,6 +87,38 @@ describe('Weight', () => {
     expect(screen.queryByText(/Норма пересчитана/)).toBeNull()
   })
 
+  it('shows the avatar and goal progress from the earliest to the latest weight', () => {
+    seed({
+      profile: { ...profile, weightKg: 95, goal: 'lose', targetWeightKg: 78 },
+      weights: [
+        { date: '2026-10-20', weightKg: 92 },
+        { date: '2026-10-01', weightKg: 95 },
+      ],
+    })
+    view()
+    expect(screen.getByRole('img', { name: 'Аватар' })).toBeInTheDocument()
+    expect(screen.getByTestId('avatar-goal')).toBeInTheDocument()
+    expect(screen.getByText('осталось 14 кг')).toBeInTheDocument()
+  })
+
+  it('says the goal is reached once the weight passes the target', () => {
+    seed({
+      profile: { ...profile, weightKg: 95, goal: 'lose', targetWeightKg: 78 },
+      weights: [{ date: '2026-10-01', weightKg: 95 }, { date: '2026-10-20', weightKg: 77.5 }],
+    })
+    view()
+    expect(screen.getByText('цель достигнута')).toBeInTheDocument()
+  })
+
+  it('shows only the avatar without a goal to reach', () => {
+    seed({ profile: { ...profile, goal: 'keep', targetWeightKg: 70 } })
+    view()
+    expect(screen.getByRole('img', { name: 'Аватар' })).toBeInTheDocument()
+    expect(screen.queryByTestId('avatar-goal')).toBeNull()
+    expect(screen.queryByTestId('goal-progress')).toBeNull()
+    expect(screen.queryByText(/осталось|цель достигнута/)).toBeNull()
+  })
+
   it('route #/weight redirects to / when trackWeight is off', async () => {
     seed({ profile: { ...profile, trackWeight: false } })
     window.location.hash = '#/weight'

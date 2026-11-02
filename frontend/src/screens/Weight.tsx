@@ -1,12 +1,16 @@
+import { m } from 'motion/react'
 import { useState } from 'react'
 import { Navigate } from 'react-router-dom'
 import { CartesianGrid, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
+import { currentWeight, goalProgress, startWeight, targetOf } from '../domain/avatar'
 import { isValidDayKey, todayKey } from '../domain/dates'
 import { normForDate } from '../domain/norm'
 import { parseWeight } from '../domain/weight'
 import { useDiary } from '../storage/DiaryContext'
 import { fmt } from '../ui/format'
 import Glass from '../ui/Glass'
+import JellyAvatar from '../ui/JellyAvatar'
+import { FILL, useReducedMotionSafe } from '../ui/motion'
 import { useToast } from '../ui/Toast'
 
 const ruDate = (key: string) => `${key.slice(8)}.${key.slice(5, 7)}.${key.slice(0, 4)}`
@@ -16,12 +20,14 @@ const tick = { fill: 'var(--chart-axis)', fontSize: 11 }
 export default function Weight() {
   const { state, addWeight } = useDiary()
   const toast = useToast()
+  const reduced = useReducedMotionSafe()
   const [text, setText] = useState('')
   const [date, setDate] = useState(todayKey)
   // The norm history as it was before saving; used to detect a recalculation.
   const [saved, setSaved] = useState<{ before: string } | null>(null)
 
-  if (!state.profile?.trackWeight) return <Navigate to="/" replace />
+  const profile = state.profile
+  if (!profile?.trackWeight) return <Navigate to="/" replace />
 
   const weight = parseWeight(text)
   const canSave = weight !== null && isValidDayKey(date) && date <= todayKey()
@@ -43,12 +49,35 @@ export default function Weight() {
       ? normForDate(state.normHistory, todayKey())
       : null
 
+  const nowKg = currentWeight(state.weights, profile)
+  const progress = goalProgress(profile, nowKg, startWeight(state.weights, profile))
+
   const points = state.weights.map((w) => ({ label: ruDate(w.date).slice(0, 5), kg: w.weightKg }))
   const recent = [...state.weights].reverse().slice(0, 10)
 
   return (
     <div className="weight">
       <h1>Вес</h1>
+      <Glass as="section" className="avatar-card">
+        <JellyAvatar
+          heightCm={profile.heightCm}
+          sex={profile.sex}
+          weightKg={nowKg}
+          targetKg={progress ? targetOf(profile) : null}
+        />
+        {progress && (
+          <div className="goal-progress" data-testid="goal-progress">
+            <div className="bar">
+              <m.i
+                initial={reduced ? false : { width: '0%' }}
+                animate={{ width: `${progress.ratio * 100}%` }}
+                transition={reduced ? { duration: 0 } : FILL}
+              />
+            </div>
+            <p>{progress.reached ? 'цель достигнута' : `осталось ${fmt(progress.leftKg)} кг`}</p>
+          </div>
+        )}
+      </Glass>
       <Glass as="section" className="card-stack">
         <label className="field">
           Вес, кг
