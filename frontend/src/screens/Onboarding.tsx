@@ -11,8 +11,9 @@ export default function Onboarding() {
   const { state, setProfile } = useDiary()
   const navigate = useNavigate()
   // Re-taking the questionnaire starts from the current profile.
-  const [draft, setDraft] = useState(() => (state.profile ? draftFrom(state.profile) : emptyDraft))
-  const profile = profileFromDraft(draft)
+  const [base] = useState(() => (state.profile ? draftFrom(state.profile) : undefined))
+  const [draft, setDraft] = useState(base ?? emptyDraft)
+  const profile = profileFromDraft(draft, base)
 
   const skip = () => {
     markOnboardingSkipped()
@@ -28,7 +29,7 @@ export default function Onboarding() {
     <Glass as="section" className="onboarding card-stack">
       <h1>Давайте познакомимся</h1>
       <p className="muted">Ответы нужны, чтобы рассчитать вашу дневную норму. Данные остаются в браузере.</p>
-      <ProfileFields draft={draft} onChange={setDraft} />
+      <ProfileFields draft={draft} base={base} onChange={setDraft} />
       {profile && <NormPreview norm={calcNorm(profile)} />}
       <div className="sheet-actions">
         <button type="button" className="btn" onClick={skip}>

@@ -209,6 +209,42 @@ describe('Profile', () => {
     expect(stored().profile.targetWeightKg).toBeNull()
   })
 
+  it('target weight: a reached goal does not lock the form, the target is kept', () => {
+    // addWeight moved profile.weightKg past the stored target.
+    seed({ profile: { ...profile, goal: 'lose', targetWeightKg: 78, weightKg: 77 }, normHistory: [calc] })
+    view()
+    expect(screen.getByText('Цель достигнута — укажите новый желаемый вес')).toBeInTheDocument()
+    expect(screen.queryByText(/желаемый вес должен быть/)).toBeNull()
+    fireEvent.change(screen.getByLabelText('Возраст'), { target: { value: '31' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Сохранить' }))
+    expect(stored().profile.age).toBe(31)
+    expect(stored().profile.targetWeightKg).toBe(78)
+  })
+
+  it('target weight: changing a reached target to the wrong side still blocks saving', () => {
+    seed({ profile: { ...profile, goal: 'lose', targetWeightKg: 78, weightKg: 77 }, normHistory: [calc] })
+    view()
+    fireEvent.change(screen.getByLabelText('Желаемый вес, кг'), { target: { value: '79' } })
+    expect(screen.getByText('Для цели «Похудеть» желаемый вес должен быть меньше текущего')).toBeInTheDocument()
+    expect(screen.queryByText('Цель достигнута — укажите новый желаемый вес')).toBeNull()
+    expect(screen.getByRole('button', { name: 'Сохранить' })).toBeDisabled()
+    fireEvent.change(screen.getByLabelText('Желаемый вес, кг'), { target: { value: '74' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Сохранить' }))
+    expect(stored().profile.targetWeightKg).toBe(74)
+  })
+
+  it('target weight: the gain goal wants a target above the current weight', () => {
+    seed({ profile, normHistory: [calc] })
+    view()
+    fireEvent.click(screen.getByRole('button', { name: 'Набрать' }))
+    fireEvent.change(screen.getByLabelText('Желаемый вес, кг'), { target: { value: '75' } })
+    expect(screen.getByText('Для цели «Набрать» желаемый вес должен быть больше текущего')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Сохранить' })).toBeDisabled()
+    fireEvent.change(screen.getByLabelText('Желаемый вес, кг'), { target: { value: '85' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Сохранить' }))
+    expect(stored().profile).toMatchObject({ goal: 'gain', targetWeightKg: 85 })
+  })
+
   it('after an import the form shows the imported profile, not stale values', async () => {
     seed({ profile, normHistory: [calc] })
     const other: ProfileT = { ...profile, weightKg: 70, age: 44, updatedAt: '2026-06-01T00:00:00.000Z' }

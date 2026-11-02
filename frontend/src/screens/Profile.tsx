@@ -31,8 +31,9 @@ function QuestionnaireCard() {
   const { state, setProfile } = useDiary()
   const toast = useToast()
   const navigate = useNavigate()
-  const [draft, setDraft] = useState(() => (state.profile ? draftFrom(state.profile) : emptyDraft))
-  const profile = profileFromDraft(draft)
+  const [base] = useState(() => (state.profile ? draftFrom(state.profile) : undefined))
+  const [draft, setDraft] = useState(base ?? emptyDraft)
+  const profile = profileFromDraft(draft, base)
 
   return (
     <Glass as="section" className="card-stack">
@@ -40,7 +41,7 @@ function QuestionnaireCard() {
         <h2>Анкета</h2>
         {state.profile && <MiniAvatar profile={state.profile} weights={state.weights} />}
       </div>
-      <ProfileFields draft={draft} onChange={setDraft} />
+      <ProfileFields draft={draft} base={base} onChange={setDraft} />
       <button
         type="button"
         className="btn primary"

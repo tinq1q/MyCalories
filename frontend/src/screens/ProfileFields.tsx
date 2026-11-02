@@ -48,15 +48,21 @@ const targetWrongSide = (d: Draft): boolean => {
   return d.goal === 'lose' ? target >= weight : d.goal === 'gain' ? target <= weight : false
 }
 
+// The stored target is already reached (logged weights move profile.weightKg):
+// left untouched it is kept as is and does not block saving the other fields.
+const targetReached = (d: Draft, base?: Draft): boolean =>
+  base !== undefined && d.goal === base.goal && d.targetWeightKg.trim() === base.targetWeightKg.trim() && targetWrongSide(d)
+
 // Returns a complete profile, or null while any field is invalid.
-export function profileFromDraft(d: Draft): Profile | null {
+// base: the draft the form started from (the stored profile), if any.
+export function profileFromDraft(d: Draft, base?: Draft): Profile | null {
   const age = inRange(d.age, 10, 100)
   const heightCm = inRange(d.heightCm, 100, 250)
   const weightKg = inRange(d.weightKg, 30, 300)
   if (age === null || heightCm === null || weightKg === null) return null
   const targetWeightKg = d.goal === 'keep' ? null : inRange(d.targetWeightKg, 30, 300)
   if (d.goal !== 'keep' && d.targetWeightKg.trim() !== '' && targetWeightKg === null) return null
-  if (targetWrongSide(d)) return null
+  if (targetWrongSide(d) && !targetReached(d, base)) return null
   return {
     sex: d.sex,
     age: Math.round(age),
@@ -100,7 +106,7 @@ function Num({ label, value, min, max, onChange }: { label: string; value: strin
   )
 }
 
-export default function ProfileFields({ draft, onChange }: { draft: Draft; onChange(d: Draft): void }) {
+export default function ProfileFields({ draft, base, onChange }: { draft: Draft; base?: Draft; onChange(d: Draft): void }) {
   const set = <K extends keyof Draft>(k: K, v: Draft[K]) => onChange({ ...draft, [k]: v })
   return (
     <div className="form-stack">
@@ -122,10 +128,14 @@ export default function ProfileFields({ draft, onChange }: { draft: Draft; onCha
       {draft.goal !== 'keep' && (
         <>
           <Num label="Желаемый вес, кг" value={draft.targetWeightKg} min={30} max={300} onChange={(v) => set('targetWeightKg', v)} />
-          {targetWrongSide(draft) && (
-            <span className="error">
-              Для цели «{GOAL_LABELS[draft.goal]}» желаемый вес должен быть {draft.goal === 'lose' ? 'меньше' : 'больше'} текущего
-            </span>
+          {targetReached(draft, base) ? (
+            <span className="muted">Цель достигнута — укажите новый желаемый вес</span>
+          ) : (
+            targetWrongSide(draft) && (
+              <span className="error">
+                Для цели «{GOAL_LABELS[draft.goal]}» желаемый вес должен быть {draft.goal === 'lose' ? 'меньше' : 'больше'} текущего
+              </span>
+            )
           )}
         </>
       )}
