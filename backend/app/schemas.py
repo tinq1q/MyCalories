@@ -42,6 +42,7 @@ class Profile(BaseModel):
     goal: Literal["lose", "keep", "gain"]
     trackWeight: bool
     updatedAt: str  # ISO timestamp
+    targetWeightKg: float | None = None
 
 
 class NormRecord(BaseModel):
@@ -65,6 +66,7 @@ class ExportData(BaseModel):
     entries: list[Entry]
     customProducts: list[Product]
     weights: list[WeightRecord]
+    theme: Literal["citrus", "sunset", "ocean", "night"] | None = None
 
 
 class ImportError_(BaseModel):

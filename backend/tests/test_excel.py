@@ -358,3 +358,63 @@ def test_import_rejects_big_content_length_before_reading(client, monkeypatch):
 def test_import_missing_file_field(client):
     r = client.post("/api/diary/import", files={"other": ("x.xlsx", b"123")})
     assert r.status_code == 400 and r.json()["detail"]
+
+
+def test_theme_roundtrip(sample_export):
+    data = sample_export.model_copy(update={"theme": "ocean"})
+    wb = load_workbook(io.BytesIO(build_workbook(data)))
+    assert wb["Инфо"]["A2"].value == "Тема"
+    assert wb["Инфо"]["B2"].value == "Океан"
+    r = parse_workbook(build_workbook(data))
+    assert r.data.theme == "ocean"
+    assert r.errors == []
+
+
+def test_theme_absent_imports_as_none(sample_export):
+    wb = load_workbook(io.BytesIO(build_workbook(sample_export)))
+    assert wb["Инфо"]["A2"].value is None
+    r = parse_workbook(build_workbook(sample_export))
+    assert r.data.theme is None
+    assert r.errors == []
+
+
+def test_unknown_theme_label_is_ignored(sample_export):
+    def edit(wb):
+        wb["Инфо"].append(["Тема", "Розовая"])
+    r = parse_workbook(patched(sample_export, edit))
+    assert r.data.theme is None
+    assert r.errors == []
+
+
+def test_target_weight_roundtrip(sample_export):
+    profile = sample_export.profile.model_copy(update={"targetWeightKg": 78.5})
+    data = sample_export.model_copy(update={"profile": profile})
+    r = parse_workbook(build_workbook(data))
+    assert r.data.profile.targetWeightKg == 78.5
+    assert r == ImportResult(data=data, errors=[])
+
+
+def test_profile_without_target_weight_row(sample_export):
+    wb = load_workbook(io.BytesIO(build_workbook(sample_export)))
+    assert "Желаемый вес" not in [c.value for c in wb["Профиль"]["A"]]
+    r = parse_workbook(build_workbook(sample_export))
+    assert r.data.profile.targetWeightKg is None
+    assert r.errors == []
+
+
+def test_bad_target_weight_drops_only_that_field(sample_export):
+    profile = sample_export.profile.model_copy(update={"targetWeightKg": 70})
+    data = sample_export.model_copy(update={"profile": profile})
+
+    def edit(wb):
+        ws = wb["Профиль"]
+        for row in ws.iter_rows(min_row=2):
+            if row[0].value == "Желаемый вес":
+                row[1].value = "abc"
+    r = parse_workbook(patched(data, edit))
+    assert r.data.profile is not None
+    assert r.data.profile.targetWeightKg is None
+    assert r.data.profile.age == 30
+    assert len(r.errors) == 1
+    assert r.errors[0].sheet == "Профиль"
+    assert "Желаемый вес" in r.errors[0].message

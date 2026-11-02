@@ -56,6 +56,7 @@ ACTIVITY = {
 }
 GOAL = {"lose": "похудеть", "keep": "держать вес", "gain": "набрать"}
 SOURCES = ("base", "off", "custom")
+THEMES = {"citrus": "Цитрус", "sunset": "Закат", "ocean": "Океан", "night": "Ночь"}
 
 
 class UnsupportedFile(Exception):
@@ -85,6 +86,8 @@ def build_workbook(data: ExportData) -> bytes:
     info = wb.active
     info.title = SHEET_INFO
     info.append(["Версия формата", FORMAT_VERSION])
+    if data.theme is not None:
+        info.append(["Тема", THEMES[data.theme]])
 
     diary = wb.create_sheet(SHEET_DIARY)
     diary.append(DIARY_HEADERS)
@@ -108,6 +111,7 @@ def build_workbook(data: ExportData) -> bytes:
             ["Цель", GOAL[pr.goal]],
             ["Отслеживать вес", "да" if pr.trackWeight else "нет"],
             ["Обновлено", pr.updatedAt],  # kept as ISO text for an exact roundtrip
+            *([["Желаемый вес", pr.targetWeightKg]] if pr.targetWeightKg is not None else []),
         ]:
             profile.append(row)
 
@@ -360,6 +364,16 @@ def _parse_profile(wb, errors: list[ImportError_]) -> Profile | None:
         except RowError as e:
             raise RowError(f"{name}: {e}", row_no) from None
 
+    target = None
+    if "желаемый вес" in rows:
+        row_no, raw = rows["желаемый вес"]
+        try:
+            target = None if _is_blank(raw) else _parse_number(raw, "Желаемый вес", positive=True)
+        except RowError as e:
+            errors.append(ImportError_(
+                sheet=SHEET_PROFILE, row=row_no,
+                message=f"Желаемый вес не импортирован. {e}"))
+
     try:
         _, updated = get("Обновлено")
         return Profile(
@@ -373,6 +387,7 @@ def _parse_profile(wb, errors: list[ImportError_]) -> Profile | None:
             # A hand-edited file may hold a real date; keep ISO text either way.
             updatedAt=updated.isoformat() if isinstance(updated, (date, datetime))
             else _text(updated, "Обновлено"),
+            targetWeightKg=target,
         )
     except RowError as e:
         errors.append(ImportError_(
@@ -404,6 +419,16 @@ def _check_version(wb) -> None:
         )
     if version != FORMAT_VERSION:
         raise UnsupportedFile(f"Неподдерживаемая версия формата файла: {version}.")
+
+
+def _parse_theme(wb) -> str | None:
+    """Theme from a «Тема» row on the info sheet (below the version row); unknown or absent -> None."""
+    by_label = {label.lower(): key for key, label in THEMES.items()}
+    for row in wb[SHEET_INFO].iter_rows(min_row=2, max_row=20, max_col=2, values_only=True):
+        c = _cells(row, 2)
+        if isinstance(c[0], str) and c[0].strip().lower() == "тема":
+            return by_label.get(str(c[1]).strip().lower()) if c[1] is not None else None
+    return None
 
 
 UNREADABLE = "Не удалось прочитать файл. Нужен файл .xlsx, созданный My Calories."
@@ -444,6 +469,7 @@ def parse_workbook(content: bytes) -> ImportResult:
             entries=_collect(wb, SHEET_DIARY, DIARY_HEADERS, _parse_entry, errors),
             customProducts=_collect(wb, SHEET_PRODUCTS, PRODUCT_HEADERS, _parse_custom_product, errors),
             weights=_collect(wb, SHEET_WEIGHT, WEIGHT_HEADERS, _parse_weight, errors),
+            theme=_parse_theme(wb),
         )
     finally:
         wb.close()  # read-only workbooks keep the archive open until closed
